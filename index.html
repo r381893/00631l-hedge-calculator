@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>00631L 避險計算器</title>
+    <meta name="description" content="使用選擇權組合策略保護 00631L 持股的避險分析工具">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">🛡️</span>
+                <div class="logo-text">
+                    <h1>00631L 避險計算器</h1>
+                    <p>使用選擇權組合策略保護您的持股</p>
+                </div>
+            </div>
+            <div class="market-info">
+                <div class="market-item">
+                    <span class="market-label">加權指數</span>
+                    <span class="market-value" id="tse-index">--</span>
+                </div>
+                <div class="market-item">
+                    <span class="market-label">00631L</span>
+                    <span class="market-value" id="etf-price">--</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <button class="sidebar-toggle" id="sidebar-toggle">
+                <span>☰</span>
+            </button>
+            
+            <div class="sidebar-content">
+                <!-- ETF Settings -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">📊 00631L 庫存設定</h3>
+                    <div class="form-group">
+                        <label for="etf-lots">持有張數</label>
+                        <input type="number" id="etf-lots" value="0" step="0.1" min="0">
+                        <span class="form-hint">1張 = 1000股</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="etf-cost">平均成本 (元)</label>
+                        <input type="number" id="etf-cost" value="100" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="etf-current">現價 (元)</label>
+                        <input type="number" id="etf-current" value="100" step="0.1" min="0">
+                    </div>
+                </div>
+
+                <!-- Hedge Settings -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">🛡️ 避險設定</h3>
+                    <div class="form-group">
+                        <label for="hedge-ratio">每張 ETF 避險口數</label>
+                        <input type="number" id="hedge-ratio" value="0.2" step="0.01" min="0" max="1">
+                    </div>
+                    <div class="suggested-hedge">
+                        <p class="suggested-label">📌 建議避險口數</p>
+                        <p class="suggested-value" id="suggested-lots">0.0 口</p>
+                        <p class="suggested-calc" id="suggested-calc"></p>
+                    </div>
+                </div>
+
+                <!-- Simulation Settings -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">📈 模擬設定</h3>
+                    <div class="form-group">
+                        <label for="price-range">模擬範圍 (±點數)</label>
+                        <input type="number" id="price-range" value="1500" step="100" min="100">
+                    </div>
+                    <div class="current-index">
+                        <span>當前指數:</span>
+                        <strong id="current-index-display">--</strong>
+                    </div>
+                </div>
+
+                <!-- Firebase Status -->
+                <div class="sidebar-section firebase-status">
+                    <div class="status-indicator" id="firebase-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">未連線</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- File Operations -->
+            <section class="card" id="file-operations">
+                <h2 class="section-title">📂 檔案操作</h2>
+                <div class="button-group">
+                    <button class="btn btn-secondary" id="btn-reload">🔄 重新載入</button>
+                    <button class="btn btn-primary" id="btn-save">💾 手動儲存</button>
+                    <button class="btn btn-danger" id="btn-clear">🧹 清空所有</button>
+                </div>
+            </section>
+
+            <!-- ETF Summary -->
+            <section class="card" id="etf-summary" style="display: none;">
+                <h2 class="section-title">💰 00631L 庫存摘要</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">持有張數</span>
+                        <span class="stat-value" id="stat-lots">--</span>
+                        <span class="stat-sub" id="stat-shares">-- 股</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">市值</span>
+                        <span class="stat-value" id="stat-market-value">--</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">成本</span>
+                        <span class="stat-value" id="stat-cost-value">--</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">未實現損益</span>
+                        <span class="stat-value" id="stat-unrealized-pnl">--</span>
+                        <span class="stat-sub" id="stat-pnl-pct">--%</span>
+                    </div>
+                </div>
+                <div class="hedge-suggestion" id="hedge-suggestion">
+                    <span class="suggestion-icon">📌</span>
+                    <span class="suggestion-text"></span>
+                </div>
+            </section>
+
+            <!-- Add Position -->
+            <section class="card" id="add-position">
+                <h2 class="section-title">➕ 新增倉位</h2>
+                
+                <!-- Product Type Tabs -->
+                <div class="tab-group">
+                    <button class="tab active" data-product="option">台指選擇權 (50元/點)</button>
+                    <button class="tab" data-product="futures">微台期貨 (10元/點)</button>
+                </div>
+
+                <!-- Option Form -->
+                <div class="position-form" id="option-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>類型</label>
+                            <select id="opt-type">
+                                <option value="Call">買權 (Call)</option>
+                                <option value="Put">賣權 (Put)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>方向</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="opt-direction" value="買進" checked>
+                                    <span>買進</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="opt-direction" value="賣出">
+                                    <span>賣出</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="opt-strike">履約價</label>
+                            <input type="number" id="opt-strike" value="23000" step="100" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="opt-lots">口數</label>
+                            <input type="number" id="opt-lots" value="1" step="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="opt-premium">權利金 (點)</label>
+                            <input type="number" id="opt-premium" value="0" step="1" min="0">
+                        </div>
+                    </div>
+                    <button class="btn btn-success btn-full" id="btn-add-option">✅ 新增選擇權倉位</button>
+                </div>
+
+                <!-- Futures Form -->
+                <div class="position-form" id="futures-form" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group flex-2">
+                            <label for="futures-strike">進場價</label>
+                            <input type="number" id="futures-strike" value="23000" step="100" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="futures-lots">口數</label>
+                            <input type="number" id="futures-lots" value="1" step="1" min="1">
+                        </div>
+                    </div>
+                    <p class="form-hint">📌 微台期貨：做空方向，一點 10 元</p>
+                    <button class="btn btn-success btn-full" id="btn-add-futures">✅ 新增微台期貨倉位</button>
+                </div>
+            </section>
+
+            <!-- Current Positions -->
+            <section class="card" id="positions-section" style="display: none;">
+                <h2 class="section-title">📋 現有倉位</h2>
+                <div class="positions-list" id="positions-list"></div>
+                
+                <!-- Premium Summary -->
+                <div class="premium-summary" id="premium-summary">
+                    <div class="premium-row">
+                        <span>賣出權利金收入:</span>
+                        <span class="profit" id="premium-in">+0 元</span>
+                    </div>
+                    <div class="premium-row">
+                        <span>買進權利金支出:</span>
+                        <span class="loss" id="premium-out">-0 元</span>
+                    </div>
+                    <hr>
+                    <div class="premium-row premium-net">
+                        <span>淨權利金:</span>
+                        <span id="premium-net">0 元</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Strategy Comparison -->
+            <section class="card" id="strategy-comparison">
+                <h2 class="section-title">⚖️ 策略比較器</h2>
+                <div class="comparison-tabs">
+                    <button class="comparison-tab active" data-strategy="A">策略 A (目前)</button>
+                    <button class="comparison-tab" data-strategy="B">策略 B</button>
+                </div>
+                <div class="comparison-content">
+                    <div class="strategy-panel" id="strategy-a-panel">
+                        <p class="strategy-info">使用目前設定的倉位組合</p>
+                    </div>
+                    <div class="strategy-panel" id="strategy-b-panel" style="display: none;">
+                        <div class="strategy-b-positions" id="strategy-b-positions">
+                            <p class="empty-hint">點擊「複製策略 A」或手動新增倉位</p>
+                        </div>
+                        <div class="strategy-b-actions">
+                            <button class="btn btn-secondary btn-sm" id="btn-copy-strategy">📋 複製策略 A</button>
+                            <button class="btn btn-primary btn-sm" id="btn-add-strategy-b">➕ 新增倉位</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-full" id="btn-compare">📊 比較兩套策略</button>
+            </section>
+
+            <!-- Auto Strategy Recommendation -->
+            <section class="card" id="auto-strategy">
+                <h2 class="section-title">🤖 自動策略推薦</h2>
+                <div class="upload-section">
+                    <p class="upload-hint">上傳 Yahoo 選擇權即時報價，自動分析最佳避險策略</p>
+                    <div class="upload-area" id="upload-area">
+                        <input type="file" id="csv-upload" accept=".csv" hidden>
+                        <div class="upload-content">
+                            <span class="upload-icon">📄</span>
+                            <p>拖曳 CSV 檔案到這裡，或<button class="btn-link" id="btn-browse">瀏覽檔案</button></p>
+                        </div>
+                    </div>
+                    <div class="divider-or"><span>或</span></div>
+                    <button class="btn btn-secondary btn-full" id="btn-fetch-yahoo">🔄 從 Yahoo 抓取最新報價</button>
+                </div>
+                <div class="recommendation-results" id="recommendation-results" style="display: none;">
+                    <!-- Results will be populated dynamically -->
+                </div>
+            </section>
+
+            <!-- PnL Chart -->
+            <section class="card" id="pnl-chart-section">
+                <h2 class="section-title">📈 損益曲線</h2>
+                <div class="chart-container">
+                    <canvas id="pnl-chart"></canvas>
+                </div>
+                <div class="chart-legend">
+                    📊 <b>圖例說明：</b>
+                    <span class="legend-item legend-etf">00631L</span> = ETF損益 | 
+                    <span class="legend-item legend-option">Options</span> = 選擇權組合 | 
+                    <span class="legend-item legend-total">Total P/L</span> = 組合總損益 | 
+                    <span class="legend-item legend-current">Current</span> = 現價
+                </div>
+            </section>
+
+            <!-- PnL Table -->
+            <section class="card" id="pnl-table-section">
+                <h2 class="section-title">📊 損益試算表</h2>
+                <div class="table-container">
+                    <table class="pnl-table" id="pnl-table">
+                        <thead>
+                            <tr>
+                                <th>結算指數</th>
+                                <th>指數變動</th>
+                                <th>00631L</th>
+                                <th>選擇權組合</th>
+                                <th>總損益</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pnl-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>💡 選擇權乘數: 50 元/點 | 00631L 槓桿: 2x</p>
+        <p>資料更新時間: <span id="update-time">--</span></p>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span class="toast-icon"></span>
+        <span class="toast-message"></span>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <!-- Custom JS -->
+    <script src="js/calculator.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/firebase.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
