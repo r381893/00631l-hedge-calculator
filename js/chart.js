@@ -5,7 +5,7 @@
 
 // 全域圖表實例
 let pnlChart = null;
-let comparisonChart = null;
+// comparisonChart 已移除（比較功能現整合於 pnlChart）
 
 // Chart.js 預設配置
 const chartDefaults = {
@@ -271,74 +271,7 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
     pnlChart.update('none');
 }
 
-/**
- * 更新策略比較圖表
- * @param {Object} comparisonData - 比較結果
- * @param {number} currentIndex - 當前指數
- */
-function updateComparisonChart(comparisonData, currentIndex) {
-    const ctx = document.getElementById('comparison-chart');
-    if (!ctx) return;
-
-    // 如果已存在圖表，先銷毀
-    if (comparisonChart) {
-        comparisonChart.destroy();
-    }
-
-    const { strategyA, strategyB } = comparisonData;
-
-    const labels = strategyA.prices.map(p => p.toLocaleString());
-
-    comparisonChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: '策略 A',
-                    data: strategyA.combinedProfits,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 3,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    tension: 0.1,
-                    fill: false
-                },
-                {
-                    label: '策略 B',
-                    data: strategyB.combinedProfits,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderWidth: 3,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    tension: 0.1,
-                    fill: false
-                }
-            ]
-        },
-        options: {
-            ...chartDefaults,
-            plugins: {
-                ...chartDefaults.plugins,
-                title: {
-                    display: true,
-                    text: '策略損益比較',
-                    color: '#f1f5f9',
-                    font: {
-                        family: "'Noto Sans TC', sans-serif",
-                        size: 16,
-                        weight: 'bold'
-                    },
-                    padding: {
-                        bottom: 20
-                    }
-                }
-            }
-        }
-    });
-}
+// updateComparisonChart 已移除（新版比較功能整合於 updatePnLChart）
 
 /**
  * 銷毀所有圖表
@@ -348,10 +281,6 @@ function destroyCharts() {
         pnlChart.destroy();
         pnlChart = null;
     }
-    if (comparisonChart) {
-        comparisonChart.destroy();
-        comparisonChart = null;
-    }
 }
 
 /**
@@ -360,23 +289,16 @@ function destroyCharts() {
  * @returns {string} Base64 圖片資料
  */
 function exportChartAsImage(chartId) {
-    let chart = null;
-    if (chartId === 'pnl-chart') {
-        chart = pnlChart;
-    } else if (chartId === 'comparison-chart') {
-        chart = comparisonChart;
+    if (chartId === 'pnl-chart' && pnlChart) {
+        return pnlChart.toBase64Image('image/png', 1);
     }
-
-    if (!chart) return null;
-
-    return chart.toBase64Image('image/png', 1);
+    return null;
 }
 
 // 匯出模組
 window.ChartModule = {
     initPnLChart,
     updatePnLChart,
-    updateComparisonChart,
     destroyCharts,
     exportChartAsImage
 };

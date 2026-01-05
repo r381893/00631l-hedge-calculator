@@ -722,27 +722,9 @@ async function handleClear() {
     showToast('success', '已清空所有資料');
 }
 
-function handleComparisonTabClick(e) {
-    const strategy = e.target.dataset.strategy;
+// handleComparisonTabClick 已移除（舊版獨立比較區塊，改用 handleStrategySwitch）
 
-    elements.comparisonTabs.forEach(tab => tab.classList.remove('active'));
-    e.target.classList.add('active');
-
-    if (strategy === 'A') {
-        elements.strategyAPanel.style.display = 'block';
-        elements.strategyBPanel.style.display = 'none';
-    } else {
-        elements.strategyAPanel.style.display = 'none';
-        elements.strategyBPanel.style.display = 'block';
-    }
-}
-
-function handleCopyStrategy() {
-    state.strategyB = {
-        positions: JSON.parse(JSON.stringify(state.optionPositions))
-    };
-    showToast('success', '已複製策略 A 到策略 B');
-}
+// 舊版 handleCopyStrategy 已移除（見 line 1570 新版）
 
 function handleCompare() {
     if (state.strategyB.positions.length === 0) {
