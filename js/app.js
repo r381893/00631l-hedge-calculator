@@ -101,6 +101,15 @@ function cacheElements() {
     elements.btnFetchYahoo = document.getElementById('btn-fetch-yahoo');
     elements.recommendationResults = document.getElementById('recommendation-results');
 
+    // AI Inventory Parser
+    elements.inventoryText = document.getElementById('inventory-text');
+    elements.btnParseInventory = document.getElementById('btn-parse-inventory');
+    elements.btnClearInventory = document.getElementById('btn-clear-inventory');
+    elements.parseResults = document.getElementById('parse-results');
+    elements.parsedEtf = document.getElementById('parsed-etf');
+    elements.parsedOptions = document.getElementById('parsed-options');
+    elements.btnApplyParsed = document.getElementById('btn-apply-parsed');
+
     // Footer
     elements.updateTime = document.getElementById('update-time');
 
@@ -150,6 +159,11 @@ function bindEvents() {
     elements.uploadArea?.addEventListener('dragleave', handleDragLeave);
     elements.uploadArea?.addEventListener('drop', handleDrop);
     elements.btnFetchYahoo?.addEventListener('click', handleFetchYahoo);
+
+    // AI Inventory Parser
+    elements.btnParseInventory?.addEventListener('click', handleParseInventory);
+    elements.btnClearInventory?.addEventListener('click', handleClearInventory);
+    elements.btnApplyParsed?.addEventListener('click', handleApplyParsed);
 }
 
 /**
@@ -193,40 +207,63 @@ async function initApp() {
 }
 
 /**
- * 抓取市場即時價格
+ * 抓取市場即時價格（使用多個 CORS proxy 備援）
  */
 async function fetchMarketPrices() {
-    try {
-        // Yahoo Finance API 透過 CORS proxy
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+    // 多個 CORS proxy 備援
+    const corsProxies = [
+        'https://api.allorigins.win/raw?url=',
+        'https://corsproxy.io/?',
+        'https://cors-anywhere.herokuapp.com/'
+    ];
 
-        // 抓取加權指數
-        const tseUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=5d');
+    let proxyUrl = corsProxies[0];
+
+    // 嘗試抓取加權指數
+    for (const proxy of corsProxies) {
         try {
-            const tseRes = await fetch(proxyUrl + tseUrl);
-            const tseData = await tseRes.json();
-            const tsePrice = tseData?.chart?.result?.[0]?.meta?.regularMarketPrice;
-            if (tsePrice && tsePrice > 1000) {
-                state.tseIndex = tsePrice;
+            const tseUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=5d');
+            const tseRes = await fetch(proxy + tseUrl, {
+                headers: { 'Accept': 'application/json' },
+                timeout: 5000
+            });
+            if (tseRes.ok) {
+                const tseData = await tseRes.json();
+                const tsePrice = tseData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+                if (tsePrice && tsePrice > 1000) {
+                    state.tseIndex = tsePrice;
+                    proxyUrl = proxy; // 記住可用的 proxy
+                    console.log('加權指數抓取成功:', tsePrice);
+                    break;
+                }
             }
         } catch (e) {
-            console.warn('無法抓取加權指數:', e);
+            console.warn(`CORS proxy ${proxy} 失敗:`, e.message);
         }
+    }
 
-        // 抓取 00631L
+    // 抓取 00631L
+    try {
         const etfUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/00631L.TW?interval=1d&range=5d');
-        try {
-            const etfRes = await fetch(proxyUrl + etfUrl);
+        const etfRes = await fetch(proxyUrl + etfUrl, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (etfRes.ok) {
             const etfData = await etfRes.json();
             const etfPrice = etfData?.chart?.result?.[0]?.meta?.regularMarketPrice;
             if (etfPrice && etfPrice > 0) {
                 state.etfCurrentPrice = etfPrice;
+                console.log('00631L 抓取成功:', etfPrice);
             }
-        } catch (e) {
-            console.warn('無法抓取 00631L:', e);
         }
-    } catch (error) {
-        console.error('抓取價格失敗:', error);
+    } catch (e) {
+        console.warn('無法抓取 00631L:', e);
+    }
+
+    // 如果 API 都失敗，顯示提示讓用戶手動輸入
+    if (state.tseIndex === 23000 || state.etfCurrentPrice === 100) {
+        console.log('API 抓取不完整，請手動輸入即時價格');
+        showToast('warning', '無法自動抓取報價，請手動輸入');
     }
 }
 
@@ -1049,3 +1086,281 @@ function showToast(type, message) {
         toast.classList.remove('show');
     }, 3000);
 }
+
+// ======== AI 庫存解析 ========
+
+// 暫存解析結果
+let parsedInventory = {
+    etf: null,
+    options: []
+};
+
+/**
+ * 處理庫存解析
+ */
+function handleParseInventory() {
+    const text = elements.inventoryText.value.trim();
+    if (!text) {
+        showToast('error', '請先貼上庫存資料');
+        return;
+    }
+
+    parsedInventory = parseInventoryText(text);
+    displayParsedResults(parsedInventory);
+    showToast('success', 'AI 解析完成');
+}
+
+/**
+ * 解析庫存文字
+ * 支援多種券商格式
+ */
+function parseInventoryText(text) {
+    const result = {
+        etf: null,
+        options: []
+    };
+
+    const lines = text.split('\n').filter(l => l.trim());
+
+    for (const line of lines) {
+        // 解析 00631L ETF
+        const etfMatch = parseETFLine(line);
+        if (etfMatch) {
+            result.etf = etfMatch;
+            continue;
+        }
+
+        // 解析選擇權
+        const optMatch = parseOptionLine(line);
+        if (optMatch) {
+            result.options.push(optMatch);
+            continue;
+        }
+
+        // 解析期貨
+        const futMatch = parseFuturesLine(line);
+        if (futMatch) {
+            result.options.push(futMatch);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * 解析 ETF 庫存行
+ */
+function parseETFLine(line) {
+    const lowerLine = line.toLowerCase();
+
+    // 常見 00631L 相關關鍵字
+    if (!lowerLine.includes('00631l') && !lowerLine.includes('631l') &&
+        !lowerLine.includes('正2') && !lowerLine.includes('台灣50正2')) {
+        return null;
+    }
+
+    // 嘗試提取數值
+    const numbers = line.match(/[\d,]+\.?\d*/g) || [];
+    const cleanNumbers = numbers.map(n => parseFloat(n.replace(/,/g, ''))).filter(n => !isNaN(n));
+
+    // 嘗試識別張數、成本、現價
+    let lots = 0, cost = 0, current = 0;
+
+    // 張數模式：xxx張 或 xxx 張
+    const lotsMatch = line.match(/([\d,.]+)\s*張/);
+    if (lotsMatch) {
+        lots = parseFloat(lotsMatch[1].replace(/,/g, ''));
+    }
+
+    // 成本模式：成本xxx 或 均價xxx
+    const costMatch = line.match(/(?:成本|均價|買進均價|平均成本)[：:\s]*(\d+\.?\d*)/);
+    if (costMatch) {
+        cost = parseFloat(costMatch[1]);
+    }
+
+    // 現價模式：現價xxx 或 市價xxx
+    const currentMatch = line.match(/(?:現價|市價|收盤價)[：:\s]*(\d+\.?\d*)/);
+    if (currentMatch) {
+        current = parseFloat(currentMatch[1]);
+    }
+
+    // 如果沒有明確標籤，嘗試推斷
+    if (lots === 0 && cleanNumbers.length > 0) {
+        // 找最小的合理數值作為張數
+        const potentialLots = cleanNumbers.filter(n => n < 1000 && n > 0);
+        if (potentialLots.length > 0) {
+            lots = potentialLots[0];
+        }
+    }
+
+    if (cost === 0 && cleanNumbers.length > 1) {
+        // 找接近 ETF 價格範圍的數值
+        const potentialPrices = cleanNumbers.filter(n => n > 50 && n < 300);
+        if (potentialPrices.length >= 1) {
+            cost = potentialPrices[0];
+        }
+        if (potentialPrices.length >= 2) {
+            current = potentialPrices[1];
+        }
+    }
+
+    if (lots === 0 && cost === 0) return null;
+
+    return { lots, cost, current };
+}
+
+/**
+ * 解析選擇權庫存行
+ */
+function parseOptionLine(line) {
+    const lowerLine = line.toLowerCase();
+
+    // 選擇權關鍵字
+    const isOption = lowerLine.includes('call') || lowerLine.includes('put') ||
+        lowerLine.includes('買權') || lowerLine.includes('賣權') ||
+        lowerLine.includes('選擇權');
+
+    if (!isOption) return null;
+
+    // 判斷 Call/Put
+    const isCall = lowerLine.includes('call') || lowerLine.includes('買權');
+    const type = isCall ? 'Call' : 'Put';
+
+    // 判斷買進/賣出
+    const isBuy = lowerLine.includes('買進') || lowerLine.includes('long') ||
+        lowerLine.includes('買入') || !lowerLine.includes('賣出');
+    const direction = lowerLine.includes('賣出') ? '賣出' : '買進';
+
+    // 提取履約價（通常是 5 位數）
+    const strikeMatch = line.match(/(\d{4,5})(?!\d)/);
+    const strike = strikeMatch ? parseInt(strikeMatch[1]) : 0;
+
+    // 提取口數
+    const lotsMatch = line.match(/(\d+)\s*口/);
+    const lots = lotsMatch ? parseInt(lotsMatch[1]) : 1;
+
+    // 提取權利金
+    const premiumMatch = line.match(/(?:權利金|成本|@)\s*(\d+)/);
+    const premium = premiumMatch ? parseFloat(premiumMatch[1]) : 0;
+
+    if (strike === 0) return null;
+
+    return {
+        product: '台指',
+        type,
+        direction,
+        strike,
+        lots,
+        premium
+    };
+}
+
+/**
+ * 解析期貨庫存行
+ */
+function parseFuturesLine(line) {
+    const lowerLine = line.toLowerCase();
+
+    // 期貨關鍵字
+    const isFutures = lowerLine.includes('期貨') || lowerLine.includes('微台') ||
+        lowerLine.includes('小台') || lowerLine.includes('大台');
+
+    if (!isFutures) return null;
+
+    // 提取價格（通常是 5 位數）
+    const priceMatch = line.match(/(\d{4,5})(?!\d)/);
+    const strike = priceMatch ? parseInt(priceMatch[1]) : 0;
+
+    // 提取口數
+    const lotsMatch = line.match(/(\d+)\s*口/);
+    const lots = lotsMatch ? parseInt(lotsMatch[1]) : 1;
+
+    if (strike === 0) return null;
+
+    return {
+        product: '微台期貨',
+        type: 'Futures',
+        direction: '做空',
+        strike,
+        lots,
+        premium: 0
+    };
+}
+
+/**
+ * 顯示解析結果
+ */
+function displayParsedResults(parsed) {
+    let etfHtml = '';
+    let optionsHtml = '';
+
+    if (parsed.etf) {
+        etfHtml = `
+            <div class="parsed-item">
+                <span class="parsed-label">📊 00631L</span>
+                <span class="parsed-value">${parsed.etf.lots} 張</span>
+                <span class="parsed-detail">成本 ${parsed.etf.cost || '--'} / 現價 ${parsed.etf.current || '--'}</span>
+            </div>
+        `;
+    } else {
+        etfHtml = '<p class="empty-hint">未偵測到 ETF 庫存</p>';
+    }
+
+    if (parsed.options.length > 0) {
+        optionsHtml = parsed.options.map((opt, i) => `
+            <div class="parsed-item">
+                <span class="parsed-label">#${i + 1}</span>
+                <span class="parsed-tag tag-${opt.type.toLowerCase()}">${opt.type}</span>
+                <span class="parsed-tag tag-${opt.direction === '買進' ? 'buy' : 'sell'}">${opt.direction}</span>
+                <span class="parsed-value">${opt.strike}</span>
+                <span class="parsed-detail">${opt.lots} 口 @ ${opt.premium} 點</span>
+            </div>
+        `).join('');
+    } else {
+        optionsHtml = '<p class="empty-hint">未偵測到選擇權倉位</p>';
+    }
+
+    elements.parsedEtf.innerHTML = etfHtml;
+    elements.parsedOptions.innerHTML = optionsHtml;
+    elements.parseResults.style.display = 'block';
+}
+
+/**
+ * 清空庫存輸入
+ */
+function handleClearInventory() {
+    elements.inventoryText.value = '';
+    elements.parseResults.style.display = 'none';
+    parsedInventory = { etf: null, options: [] };
+}
+
+/**
+ * 套用解析結果
+ */
+function handleApplyParsed() {
+    if (!parsedInventory.etf && parsedInventory.options.length === 0) {
+        showToast('error', '沒有可套用的資料');
+        return;
+    }
+
+    // 套用 ETF
+    if (parsedInventory.etf) {
+        state.etfLots = parsedInventory.etf.lots;
+        if (parsedInventory.etf.cost) state.etfCost = parsedInventory.etf.cost;
+        if (parsedInventory.etf.current) state.etfCurrentPrice = parsedInventory.etf.current;
+    }
+
+    // 套用選擇權
+    if (parsedInventory.options.length > 0) {
+        state.optionPositions = [...state.optionPositions, ...parsedInventory.options];
+    }
+
+    updateUI();
+    updateChart();
+    autoSave();
+    showToast('success', '已套用解析結果');
+
+    // 清空
+    handleClearInventory();
+}
+

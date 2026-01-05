@@ -1292,3 +1292,93 @@ a:hover {
         gap: 8px;
     }
 }
+
+/* ======== AI Inventory Parser ======== */
+#inventory-text {
+    width: 100%;
+    padding: 14px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    transition: border-color var(--transition-fast);
+}
+
+#inventory-text:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+#inventory-text::placeholder {
+    color: var(--text-muted);
+}
+
+.parse-results {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.parse-results h4 {
+    margin-bottom: 12px;
+    color: var(--accent-light);
+}
+
+.parsed-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.parsed-label {
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 80px;
+}
+
+.parsed-value {
+    font-weight: 700;
+    color: var(--accent-light);
+}
+
+.parsed-detail {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.parsed-tag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.parsed-tag.tag-call {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning-light);
+}
+
+.parsed-tag.tag-put {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--purple);
+}
+
+.parsed-tag.tag-buy {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent-light);
+}
+
+.parsed-tag.tag-sell {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger-light);
+}
