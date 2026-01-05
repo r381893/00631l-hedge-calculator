@@ -110,6 +110,16 @@ function cacheElements() {
     elements.parsedOptions = document.getElementById('parsed-options');
     elements.btnApplyParsed = document.getElementById('btn-apply-parsed');
 
+    // Image OCR
+    elements.imageUpload = document.getElementById('image-upload');
+    elements.imageUploadArea = document.getElementById('image-upload-area');
+    elements.btnBrowseImage = document.getElementById('btn-browse-image');
+    elements.imagePreview = document.getElementById('image-preview');
+    elements.previewImg = document.getElementById('preview-img');
+    elements.btnOcrRecognize = document.getElementById('btn-ocr-recognize');
+    elements.btnClearImage = document.getElementById('btn-clear-image');
+    elements.ocrLoading = document.getElementById('ocr-loading');
+
     // Footer
     elements.updateTime = document.getElementById('update-time');
 
@@ -164,6 +174,15 @@ function bindEvents() {
     elements.btnParseInventory?.addEventListener('click', handleParseInventory);
     elements.btnClearInventory?.addEventListener('click', handleClearInventory);
     elements.btnApplyParsed?.addEventListener('click', handleApplyParsed);
+
+    // Image OCR
+    elements.btnBrowseImage?.addEventListener('click', () => elements.imageUpload?.click());
+    elements.imageUpload?.addEventListener('change', handleImageUpload);
+    elements.imageUploadArea?.addEventListener('dragover', handleImageDragOver);
+    elements.imageUploadArea?.addEventListener('dragleave', handleImageDragLeave);
+    elements.imageUploadArea?.addEventListener('drop', handleImageDrop);
+    elements.btnOcrRecognize?.addEventListener('click', handleOcrRecognize);
+    elements.btnClearImage?.addEventListener('click', handleClearImage);
 }
 
 /**
@@ -1364,3 +1383,186 @@ function handleApplyParsed() {
     handleClearInventory();
 }
 
+// ======== 圖片 OCR 功能 ========
+
+// PWA 後端 API URL
+const OCR_API_URL = 'https://zero0631l-hedge-api.onrender.com/api/ocr-image';
+
+// 暫存的圖片 base64
+let uploadedImageBase64 = null;
+
+/**
+ * 處理圖片上傳
+ */
+function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+        processImageFile(file);
+    }
+}
+
+/**
+ * 處理圖片拖曳 - dragover
+ */
+function handleImageDragOver(e) {
+    e.preventDefault();
+    elements.imageUploadArea.classList.add('dragover');
+}
+
+/**
+ * 處理圖片拖曳 - dragleave
+ */
+function handleImageDragLeave(e) {
+    e.preventDefault();
+    elements.imageUploadArea.classList.remove('dragover');
+}
+
+/**
+ * 處理圖片拖曳 - drop
+ */
+function handleImageDrop(e) {
+    e.preventDefault();
+    elements.imageUploadArea.classList.remove('dragover');
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        processImageFile(file);
+    } else {
+        showToast('error', '請上傳圖片檔案');
+    }
+}
+
+/**
+ * 處理圖片檔案 - 轉換為 base64 並預覽
+ */
+function processImageFile(file) {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        const base64 = e.target.result;
+        uploadedImageBase64 = base64;
+
+        // 顯示預覽
+        elements.previewImg.src = base64;
+        elements.imageUploadArea.style.display = 'none';
+        elements.imagePreview.style.display = 'block';
+    };
+
+    reader.onerror = () => {
+        showToast('error', '無法讀取圖片');
+    };
+
+    reader.readAsDataURL(file);
+}
+
+/**
+ * 清除圖片
+ */
+function handleClearImage() {
+    uploadedImageBase64 = null;
+    elements.previewImg.src = '';
+    elements.imageUpload.value = '';
+    elements.imagePreview.style.display = 'none';
+    elements.imageUploadArea.style.display = 'block';
+    elements.ocrLoading.style.display = 'none';
+}
+
+/**
+ * 執行 OCR 辨識
+ */
+async function handleOcrRecognize() {
+    if (!uploadedImageBase64) {
+        showToast('error', '請先上傳圖片');
+        return;
+    }
+
+    // 顯示載入中
+    elements.imagePreview.style.display = 'none';
+    elements.ocrLoading.style.display = 'block';
+
+    try {
+        const response = await fetch(OCR_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                image: uploadedImageBase64
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'OCR 服務錯誤');
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.csv) {
+            throw new Error('無法辨識圖片內容');
+        }
+
+        // 解析 CSV 結果
+        const positions = parseOcrCsv(data.csv);
+
+        if (positions.length === 0) {
+            throw new Error('未識別到任何選擇權倉位');
+        }
+
+        // 設定到 parsedInventory 並顯示結果
+        parsedInventory = {
+            etf: null,
+            options: positions
+        };
+
+        displayParsedResults(parsedInventory);
+        showToast('success', `AI 辨識成功！共 ${positions.length} 筆倉位`);
+
+    } catch (error) {
+        console.error('OCR Error:', error);
+        showToast('error', 'OCR 辨識失敗: ' + error.message);
+
+        // 恢復預覽
+        elements.imagePreview.style.display = 'block';
+    } finally {
+        elements.ocrLoading.style.display = 'none';
+    }
+}
+
+/**
+ * 解析 OCR 回傳的 CSV 格式
+ * 格式：類型,方向,Call/Put,履約價,權利金,口數
+ */
+function parseOcrCsv(csvText) {
+    const positions = [];
+    const lines = csvText.split('\n').filter(l => l.trim());
+
+    // 跳過標題行
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim());
+
+        if (cols.length < 6) continue;
+
+        const [typeStr, directionStr, callPutStr, strikeStr, premiumStr, lotsStr] = cols;
+
+        // 跳過期貨（這裡只處理選擇權）
+        if (typeStr.toLowerCase() === 'future') continue;
+
+        const strike = parseFloat(strikeStr);
+        const premium = parseFloat(premiumStr);
+        const lots = parseInt(lotsStr);
+
+        if (isNaN(strike) || isNaN(lots)) continue;
+
+        positions.push({
+            product: '台指',
+            type: callPutStr.toLowerCase() === 'call' ? 'Call' : 'Put',
+            direction: directionStr.toLowerCase() === 'buy' ? '買進' : '賣出',
+            strike: strike,
+            lots: lots,
+            premium: isNaN(premium) ? 0 : premium
+        });
+    }
+
+    return positions;
+}
