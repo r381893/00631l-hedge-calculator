@@ -1456,3 +1456,69 @@ a:hover {
     color: var(--warning-light);
     font-weight: 700;
 }
+
+/* ======== Strategy Comparsion Switch ======== */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.strategy-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.strategy-tabs {
+    display: flex;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.strategy-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all var(--transition-fast);
+}
+
+.strategy-tab:hover {
+    color: var(--text-primary);
+}
+
+.strategy-tab.active[data-strategy="A"] {
+    background: var(--danger);
+    color: white;
+}
+
+.strategy-tab.active[data-strategy="B"] {
+    background: var(--accent);
+    color: white;
+}
+
+/* PnL Table Comparison Columns */
+.diff-positive {
+    color: var(--success-light);
+    font-weight: 700;
+}
+
+.diff-negative {
+    color: var(--danger-light);
+    font-weight: 700;
+}
+
+.col-strategy-a {
+    color: var(--danger-light);
+}
+
+.col-strategy-b {
+    color: var(--accent-light);
+}

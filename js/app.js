@@ -4,6 +4,12 @@
  */
 
 // ======== 全域狀態 ========
+// 策略儲存容器
+const strategies = {
+    A: [],
+    B: []
+};
+
 const state = {
     etfLots: 0,
     etfCost: 100,
@@ -11,10 +17,12 @@ const state = {
     hedgeRatio: 0.2,
     tseIndex: 23000,
     priceRange: 1500,
-    optionPositions: [],
-    strategyB: {
-        positions: []
-    },
+
+    // 策略管理
+    strategies: strategies,
+    currentStrategy: 'A',
+    optionPositions: strategies.A, // 動態指向當前策略的倉位
+
     isLoading: true
 };
 
@@ -87,12 +95,10 @@ function cacheElements() {
     elements.futuresLots = document.getElementById('futures-lots');
     elements.btnAddFutures = document.getElementById('btn-add-futures');
 
-    // Strategy Comparison
-    elements.comparisonTabs = document.querySelectorAll('.comparison-tab');
-    elements.strategyAPanel = document.getElementById('strategy-a-panel');
-    elements.strategyBPanel = document.getElementById('strategy-b-panel');
+    // Strategy Switch Controls
+    elements.btnStrategyA = document.getElementById('btn-strategy-a');
+    elements.btnStrategyB = document.getElementById('btn-strategy-b');
     elements.btnCopyStrategy = document.getElementById('btn-copy-strategy');
-    elements.btnCompare = document.getElementById('btn-compare');
 
     // Auto Strategy
     elements.csvUpload = document.getElementById('csv-upload');
@@ -155,12 +161,10 @@ function bindEvents() {
     elements.btnAddOption?.addEventListener('click', handleAddOption);
     elements.btnAddFutures?.addEventListener('click', handleAddFutures);
 
-    // Strategy Comparison Tabs
-    elements.comparisonTabs.forEach(tab => {
-        tab.addEventListener('click', handleComparisonTabClick);
-    });
+    // Strategy Switching
+    elements.btnStrategyA?.addEventListener('click', handleStrategySwitch);
+    elements.btnStrategyB?.addEventListener('click', handleStrategySwitch);
     elements.btnCopyStrategy?.addEventListener('click', handleCopyStrategy);
-    elements.btnCompare?.addEventListener('click', handleCompare);
 
     // CSV Upload
     elements.btnBrowse?.addEventListener('click', () => elements.csvUpload?.click());
@@ -196,7 +200,28 @@ async function initApp() {
         // 載入資料
         const savedData = await FirebaseModule.loadData();
         if (savedData) {
-            Object.assign(state, savedData);
+            // 資料遷移：如果舊資料只有 optionPositions，移到 strategies.A
+            if (!savedData.strategies && savedData.optionPositions) {
+                state.strategies.A = savedData.optionPositions;
+                state.strategies.B = []; // 初始化空的 B
+                state.optionPositions = state.strategies.A; // 恢復參考
+
+                // 也要還原其他欄位
+                state.etfLots = savedData.etfLots || 0;
+                state.etfCost = savedData.etfCost || 100;
+                state.etfCurrentPrice = savedData.etfCurrentPrice || 100;
+                state.hedgeRatio = savedData.hedgeRatio || 0.2;
+                state.priceRange = savedData.priceRange || 1500;
+                state.tseIndex = savedData.tseIndex || 23000;
+            } else if (savedData.strategies) {
+                // 新資料結構
+                Object.assign(state, savedData);
+                // 確保 optionPositions 正確指向
+                state.currentStrategy = savedData.currentStrategy || 'A';
+                state.optionPositions = state.strategies[state.currentStrategy];
+            } else {
+                Object.assign(state, savedData);
+            }
         }
 
         // 抓取即時價格
@@ -204,6 +229,12 @@ async function initApp() {
 
         // 更新 UI
         updateUI();
+
+        // 設定策略按鈕狀態
+        if (elements.btnStrategyA && elements.btnStrategyB) {
+            elements.btnStrategyA.classList.toggle('active', state.currentStrategy !== 'B');
+            elements.btnStrategyB.classList.toggle('active', state.currentStrategy === 'B');
+        }
 
         // 設定預設履約價
         const defaultStrike = Math.round(state.tseIndex / 100) * 100;
@@ -514,22 +545,42 @@ function updatePnLTable() {
 /**
  * 更新圖表
  */
+/**
+ * 更新圖表
+ */
 function updateChart() {
-    const result = Calculator.calculatePnLCurve({
+    // 計算策略 A
+    const resultA = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
         etfCurrent: state.etfCurrentPrice,
-        positions: state.optionPositions
+        positions: state.strategies.A
     });
 
+    // 計算策略 B
+    let resultB = null;
+    if (state.strategies.B.length > 0) {
+        resultB = Calculator.calculatePnLCurve({
+            centerPrice: state.tseIndex,
+            priceRange: state.priceRange,
+            etfLots: state.etfLots,
+            etfCost: state.etfCost,
+            etfCurrent: state.etfCurrentPrice,
+            positions: state.strategies.B
+        });
+    }
+
     ChartModule.updatePnLChart(
-        result,
+        resultA,
         state.tseIndex,
         state.etfLots > 0,
-        state.optionPositions.length > 0
+        state.strategies.A.length > 0,
+        resultB
     );
+
+    updatePnLTable(resultA, resultB);
 }
 
 /**
@@ -1487,3 +1538,143 @@ function parseOcrCsv(csvText) {
 
     return positions;
 }
+
+// ======== 策略比較功能 ========
+
+/**
+ * 切換 A/B 策略
+ */
+function handleStrategySwitch(e) {
+    const target = e.target.dataset.strategy;
+    if (target && target !== state.currentStrategy) {
+        state.currentStrategy = target;
+        state.optionPositions = state.strategies[target];
+
+        // 更新按鈕樣式
+        if (elements.btnStrategyA) {
+            elements.btnStrategyA.classList.toggle('active', target === 'A');
+            elements.btnStrategyB.classList.toggle('active', target === 'B');
+        }
+
+        // 更新 UI
+        updateUI(); // 這會更新倉位列表和權利金摘要
+        updateChart(); // 這會計算兩個策略並更新圖表與表格
+
+        showToast('info', `已切換到策略 ${target}`);
+    }
+}
+
+/**
+ * 複製策略 A 到 B
+ */
+function handleCopyStrategy() {
+    // 深拷貝 A 到 B
+    state.strategies.B = JSON.parse(JSON.stringify(state.strategies.A));
+
+    // 如果當前是 B，立即更新顯示
+    if (state.currentStrategy === 'B') {
+        state.optionPositions = state.strategies.B;
+        updateUI();
+    }
+
+    // 無論如何都要更新圖表（因為 B 線變了）
+    updateChart();
+
+    showToast('success', '已將策略 A 複製到策略 B');
+    autoSave();
+}
+
+/**
+ * 更新損益試算表 (支援 A/B 比較)
+ * 覆寫舊函數以支援雙參數
+ */
+function updatePnLTable(dataA, dataB = null) {
+    if (!dataA) return;
+
+    elements.pnlTableBody.innerHTML = '';
+
+    const { prices } = dataA;
+    const profitsA = dataA.combinedProfits;
+    const profitsB = dataB ? dataB.combinedProfits : null;
+
+    // 更新表頭
+    updatePnLTableHeader(!!dataB);
+
+    for (let i = 0; i < prices.length; i++) {
+        const row = document.createElement('tr');
+
+        // 價平高亮
+        if (Math.abs(prices[i] - state.tseIndex) < 50) {
+            row.classList.add('table-active');
+        }
+
+        const change = prices[i] - state.tseIndex;
+        const changeSign = change > 0 ? '+' : '';
+        const changeClass = change > 0 ? 'profit' : (change < 0 ? 'loss' : '');
+
+        const formatPnL = (val, extraClass = '') => {
+            const cls = val >= 0 ? 'profit' : 'loss';
+            const sign = val >= 0 ? '+' : '';
+            return `<span class="${cls} ${extraClass}">${sign}${val.toLocaleString()}</span>`;
+        };
+
+        const profitA = Math.round(profitsA[i]);
+        let cells = `
+            <td>${prices[i].toLocaleString()}</td>
+            <td class="${changeClass}">${changeSign}${change.toLocaleString()}</td>
+        `;
+
+        // 策略比較模式
+        if (profitsB) {
+            const profitB = Math.round(profitsB[i]);
+            const diff = profitB - profitA;
+            const diffClass = diff > 0 ? 'diff-positive' : (diff < 0 ? 'diff-negative' : '');
+            const diffSign = diff > 0 ? '+' : '';
+
+            cells += `
+                <td class="col-strategy-a">${formatPnL(profitA)}</td>
+                <td class="col-strategy-b">${formatPnL(profitB)}</td>
+                <td class="${diffClass}">${diffSign}${diff.toLocaleString()}</td>
+            `;
+        } else {
+            // 單一策略模式
+            const etfProfit = Math.round(dataA.etfProfits[i]);
+            const optProfit = Math.round(dataA.optionProfits[i]);
+            cells += `
+                <td>${formatPnL(etfProfit)}</td>
+                <td>${formatPnL(optProfit)}</td>
+                <td>${formatPnL(profitA)}</td>
+            `;
+        }
+
+        row.innerHTML = cells;
+        elements.pnlTableBody.appendChild(row);
+    }
+}
+
+/**
+ * 更新表格標題
+ */
+function updatePnLTableHeader(showComparison) {
+    const thead = document.querySelector('.table thead tr');
+    if (!thead) return;
+
+    if (showComparison) {
+        thead.innerHTML = `
+            <th>結算指數</th>
+            <th>指數變動</th>
+            <th>🔴 策略 A 損益</th>
+            <th>🔵 策略 B 損益</th>
+            <th>差異 (B-A)</th>
+        `;
+    } else {
+        thead.innerHTML = `
+            <th>結算指數</th>
+            <th>指數變動</th>
+            <th>00631L</th>
+            <th>選擇權組合</th>
+            <th>總損益</th>
+        `;
+    }
+}
+

@@ -149,13 +149,14 @@ function initPnLChart(canvasId) {
 }
 
 /**
- * 更新損益曲線圖表
- * @param {Object} data - 計算結果
+ * 更新損益曲線圖表 (支援 A/B 比較)
+ * @param {Object} data - 策略 A 計算結果
  * @param {number} currentIndex - 當前指數
  * @param {boolean} showETF - 是否顯示 ETF 曲線
  * @param {boolean} showOptions - 是否顯示選擇權曲線
+ * @param {Object} dataB - 策略 B 計算結果 (選填)
  */
-function updatePnLChart(data, currentIndex, showETF = true, showOptions = true) {
+function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, dataB = null) {
     if (!pnlChart) {
         initPnLChart('pnl-chart');
     }
@@ -170,48 +171,67 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true) 
     // 建立資料集
     const datasets = [];
 
-    if (showETF && etfProfits.some(v => v !== 0)) {
-        datasets.push({
-            label: '00631L',
-            data: etfProfits,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            tension: 0.1,
-            fill: false
-        });
+    // 只有在沒有比較資料時才顯示 ETF 和選擇權個別曲線，以免圖表太亂
+    if (!dataB) {
+        if (showETF && etfProfits.some(v => v !== 0)) {
+            datasets.push({
+                label: '00631L',
+                data: etfProfits,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                tension: 0.1,
+                fill: false
+            });
+        }
+
+        if (showOptions && optionProfits.some(v => v !== 0)) {
+            datasets.push({
+                label: '選擇權',
+                data: optionProfits,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                tension: 0.1,
+                fill: false
+            });
+        }
     }
 
-    if (showOptions && optionProfits.some(v => v !== 0)) {
-        datasets.push({
-            label: '選擇權組合',
-            data: optionProfits,
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            tension: 0.1,
-            fill: false
-        });
-    }
-
-    // 總損益曲線（始終顯示）
+    // 策略 A 總損益
     datasets.push({
-        label: '組合總損益',
+        label: dataB ? '策略 A 損益' : '組合總損益',
         data: combinedProfits,
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: '#ef4444', // 红色
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
         borderWidth: 3,
         pointRadius: 0,
         pointHoverRadius: 6,
         tension: 0.1,
-        fill: true
+        fill: !dataB // 如果有比較，就不填滿背景
     });
+
+    // 策略 B 總損益 (如果有)
+    if (dataB) {
+        datasets.push({
+            label: '策略 B 損益',
+            data: dataB.combinedProfits,
+            borderColor: '#3b82f6', // 藍色
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 3,
+            borderDash: [5, 5], // 虛線
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            tension: 0.1,
+            fill: false
+        });
+    }
 
     // 更新圖表
     pnlChart.data.labels = labels;
