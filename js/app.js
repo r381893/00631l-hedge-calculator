@@ -949,41 +949,62 @@ function parsePrice(text) {
 
 /**
  * 顯示 Yahoo 選擇權資料
+ * 以當前加權指數為基準，篩選價平 ± 700 點的選擇權
  */
 function displayYahooOptions(options) {
     if (options.length === 0) return;
 
+    // 取得當前加權指數作為價平基準
+    const currentIndex = state.tseIndex || 23000;
+    const rangePoints = 700; // 價平上下 700 點
+    const minStrike = currentIndex - rangePoints;
+    const maxStrike = currentIndex + rangePoints;
+
+    // 篩選價平 ± 700 點範圍內的選擇權
+    const filteredOptions = options.filter(o =>
+        o.strike >= minStrike && o.strike <= maxStrike
+    );
+
     // 分組：買權和賣權
-    const calls = options.filter(o => o.type === 'Call').sort((a, b) => a.strike - b.strike);
-    const puts = options.filter(o => o.type === 'Put').sort((a, b) => a.strike - b.strike);
+    const calls = filteredOptions
+        .filter(o => o.type === 'Call')
+        .sort((a, b) => a.strike - b.strike);
+    const puts = filteredOptions
+        .filter(o => o.type === 'Put')
+        .sort((a, b) => b.strike - a.strike); // Put 由高到低排序
 
     let html = `
         <div class="yahoo-options-display">
             <h3>📊 Yahoo 選擇權即時報價</h3>
-            <p class="update-note">更新時間: ${new Date().toLocaleString('zh-TW')}</p>
+            <p class="update-note">
+                更新時間: ${new Date().toLocaleString('zh-TW')} | 
+                價平基準: ${currentIndex.toLocaleString()} ± ${rangePoints} 點
+            </p>
             <div class="options-grid">
                 <div class="options-column">
-                    <h4>買權 (Call)</h4>
+                    <h4>買權 (Call) ⬆️</h4>
                     <div class="options-list">
-                        ${calls.slice(0, 10).map(opt => `
-                            <div class="option-row" data-strike="${opt.strike}" data-type="Call">
+                        ${calls.length > 0 ? calls.map(opt => `
+                            <div class="option-row ${Math.abs(opt.strike - currentIndex) < 100 ? 'atm-highlight' : ''}" 
+                                 data-strike="${opt.strike}" data-type="Call">
                                 <span class="opt-strike">${opt.strike.toLocaleString()}</span>
                                 <span class="opt-premium">${opt.premium} 點</span>
                                 <button class="btn btn-sm btn-secondary" onclick="quickAddOption('Call', ${opt.strike}, ${opt.premium})">+買</button>
                             </div>
-                        `).join('')}
+                        `).join('') : '<p class="empty-hint">無資料</p>'}
                     </div>
                 </div>
                 <div class="options-column">
-                    <h4>賣權 (Put)</h4>
+                    <h4>賣權 (Put) ⬇️</h4>
                     <div class="options-list">
-                        ${puts.slice(0, 10).map(opt => `
-                            <div class="option-row" data-strike="${opt.strike}" data-type="Put">
+                        ${puts.length > 0 ? puts.map(opt => `
+                            <div class="option-row ${Math.abs(opt.strike - currentIndex) < 100 ? 'atm-highlight' : ''}" 
+                                 data-strike="${opt.strike}" data-type="Put">
                                 <span class="opt-strike">${opt.strike.toLocaleString()}</span>
                                 <span class="opt-premium">${opt.premium} 點</span>
                                 <button class="btn btn-sm btn-secondary" onclick="quickAddOption('Put', ${opt.strike}, ${opt.premium})">+買</button>
                             </div>
-                        `).join('')}
+                        `).join('') : '<p class="empty-hint">無資料</p>'}
                     </div>
                 </div>
             </div>

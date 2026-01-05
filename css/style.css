@@ -1445,3 +1445,14 @@ a:hover {
 .ocr-loading p {
     color: var(--text-secondary);
 }
+
+/* ATM 價平選擇權高亮 */
+.option-row.atm-highlight {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(59, 130, 246, 0.15));
+    border-color: var(--warning);
+}
+
+.option-row.atm-highlight .opt-strike {
+    color: var(--warning-light);
+    font-weight: 700;
+}
