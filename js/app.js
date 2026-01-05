@@ -891,48 +891,9 @@ function parseYahooOptionsHTML(html) {
         console.error('HTML 解析錯誤:', error);
     }
 
-    // 如果 DOM 解析失敗，嘗試用正規表達式
+    // 如果 DOM 解析失敗，不再生成模擬數據
     if (options.length === 0) {
-        const strikePattern = /(\d{2},?\d{3})/g;
-        const pricePattern = /(\d+\.?\d*)/g;
-
-        // 提取所有看起來像履約價的數字
-        const strikes = [...new Set(
-            (html.match(strikePattern) || [])
-                .map(s => parseInt(s.replace(',', '')))
-                .filter(s => s >= 15000 && s <= 35000)
-        )].sort((a, b) => a - b);
-
-        // 為每個履約價建立模擬資料（用於展示介面）
-        const currentIndex = state.tseIndex || 23000;
-
-        strikes.forEach(strike => {
-            // 根據履約價與現價的距離估算權利金
-            const diff = strike - currentIndex;
-            const atm = Math.abs(diff) < 200;
-
-            // Call 權利金估算
-            const callPremium = atm ? 300 : (diff < 0 ? Math.max(50, -diff * 0.3) : Math.max(10, 200 - diff * 0.2));
-            options.push({
-                strike,
-                type: 'Call',
-                premium: Math.round(callPremium),
-                bid: Math.round(callPremium * 0.95),
-                ask: Math.round(callPremium * 1.05),
-                last: Math.round(callPremium)
-            });
-
-            // Put 權利金估算
-            const putPremium = atm ? 300 : (diff > 0 ? Math.max(50, diff * 0.3) : Math.max(10, 200 + diff * 0.2));
-            options.push({
-                strike,
-                type: 'Put',
-                premium: Math.round(putPremium),
-                bid: Math.round(putPremium * 0.95),
-                ask: Math.round(putPremium * 1.05),
-                last: Math.round(putPremium)
-            });
-        });
+        console.warn('Yahoo HTML 解析失敗，未找到合適的表格資料');
     }
 
     return options;
