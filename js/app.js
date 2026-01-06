@@ -620,8 +620,8 @@ function updatePnLTable() {
 
     elements.pnlTableBody.innerHTML = '';
 
-    const { prices, etfProfits, optionProfits, combinedProfits: profitsA } = resultA;
-    const { combinedProfits: profitsB } = resultB;
+    const { prices, etfProfits, optionProfits: optProfitsA } = resultA;
+    const { optionProfits: optProfitsB } = resultB;
     const accountPnL = getAccountPnL();
 
     const formatPnL = (val) => {
@@ -633,11 +633,12 @@ function updatePnLTable() {
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
 
-        const pnlA = Math.round(profitsA[i]);
-        const pnlB = Math.round(profitsB[i]);
+        // 策略 A/B 只計算選擇權損益
+        const pnlA = Math.round(optProfitsA[i]);
+        const pnlB = Math.round(optProfitsB[i]);
         const etfPnL = Math.round(etfProfits[i]);
-        const optPnL = Math.round(optionProfits[i]);
-        const totalPnL = etfPnL + optPnL + accountPnL;
+        // 總損益 = ETF + 策略A選擇權 + 帳戶損益
+        const totalPnL = etfPnL + pnlA + accountPnL;
         const change = prices[i] - state.tseIndex;
 
         // 高亮價平區域
@@ -652,7 +653,7 @@ function updatePnLTable() {
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
             <td>${formatPnL(etfPnL)}</td>
-            <td>${formatPnL(optPnL)}</td>
+            <td>${formatPnL(pnlA)}</td>
             <td>${formatPnL(accountPnL)}</td>
             <td><strong>${formatPnL(totalPnL)}</strong></td>
         `;
