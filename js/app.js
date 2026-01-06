@@ -74,6 +74,7 @@ function cacheElements() {
     elements.statUnrealizedPnL = document.getElementById('stat-unrealized-pnl');
     elements.statPnLPct = document.getElementById('stat-pnl-pct');
     elements.hedgeSuggestion = document.getElementById('hedge-suggestion');
+    elements.strikePickerGrid = document.getElementById('strike-picker-grid');
 
     elements.positionsSection = document.getElementById('positions-section');
     // Dual column positions
@@ -245,6 +246,9 @@ async function initApp() {
         const defaultStrike = Math.round(state.tseIndex / 100) * 100;
         if (elements.optStrike) elements.optStrike.value = defaultStrike;
         if (elements.futuresStrike) elements.futuresStrike.value = defaultStrike;
+
+        // 初始化履約價點選器
+        renderStrikePicker();
 
         // 初始化圖表
         ChartModule.initPnLChart('pnl-chart');
@@ -429,6 +433,54 @@ function updateAccountPnLDisplay() {
  */
 function getAccountPnL() {
     return state.accountBalance - state.accountCost;
+}
+
+/**
+ * 產生履約價點選器
+ */
+function renderStrikePicker() {
+    if (!elements.strikePickerGrid) return;
+
+    const centerStrike = Math.round(state.tseIndex / 100) * 100;
+    const strikes = [];
+
+    // 產生 ±500 點範圍的履約價（每 50 點一個）
+    for (let s = centerStrike - 500; s <= centerStrike + 500; s += 50) {
+        strikes.push(s);
+    }
+
+    elements.strikePickerGrid.innerHTML = strikes.map(strike => {
+        const isAtm = strike === centerStrike;
+        return `
+            <div class="strike-picker-item ${isAtm ? 'atm' : ''}">
+                <button class="strike-picker-btn call" data-strike="${strike}" data-type="Call">C</button>
+                <span class="strike-picker-price">${strike}</span>
+                <button class="strike-picker-btn put" data-strike="${strike}" data-type="Put">P</button>
+            </div>
+        `;
+    }).join('');
+
+    // 綁定事件
+    elements.strikePickerGrid.querySelectorAll('.strike-picker-btn').forEach(btn => {
+        btn.addEventListener('click', handleStrikePickerClick);
+    });
+}
+
+/**
+ * 處理履約價點選器點擊
+ */
+function handleStrikePickerClick(e) {
+    const strike = parseInt(e.target.dataset.strike);
+    const type = e.target.dataset.type;
+
+    // 填入表單
+    elements.optType.value = type;
+    elements.optStrike.value = strike;
+
+    // 捲動到表單
+    elements.optPremium?.focus();
+
+    showToast('info', `已選擇 ${strike} ${type === 'Call' ? '買權' : '賣權'}，請輸入權利金`);
 }
 
 /**
