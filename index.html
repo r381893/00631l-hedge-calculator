@@ -216,38 +216,74 @@
                 </div>
             </section>
 
-            <!-- Current Positions -->
+            <!-- Strategy Comparison -->
             <section class="card" id="positions-section" style="display: none;">
                 <div class="section-header">
-                    <h2 class="section-title">📋 現有倉位</h2>
-                    <div class="strategy-controls">
-                        <div class="strategy-tabs">
-                            <button class="strategy-tab active" id="btn-strategy-a" data-strategy="A">🔴 策略 A</button>
-                            <button class="strategy-tab" id="btn-strategy-b" data-strategy="B">🔵 策略 B</button>
-                        </div>
+                    <h2 class="section-title">📋 策略比較</h2>
+                    <div class="strategy-actions">
                         <button class="btn btn-sm btn-secondary" id="btn-copy-strategy" title="複製策略 A 到 B">
                             📥 複製 A ➔ B
+                        </button>
+                        <button class="btn btn-sm btn-danger" id="btn-clear-strategy" title="清空當前策略">
+                            🧹 清空
                         </button>
                     </div>
                 </div>
 
-                <div class="positions-list" id="positions-list"></div>
+                <!-- Dual Column Positions -->
+                <div class="comparison-grid">
+                    <!-- Strategy A -->
+                    <div class="strategy-column" id="strategy-col-a">
+                        <div class="strategy-header strategy-a">
+                            <span class="strategy-label">🔴 策略 A</span>
+                            <span class="strategy-count" id="count-a">0 筆</span>
+                        </div>
+                        <div class="positions-list" id="positions-list-a"></div>
+                        <div class="premium-summary">
+                            <div class="premium-row">
+                                <span>收入:</span>
+                                <span class="profit" id="premium-in-a">+0</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>支出:</span>
+                                <span class="loss" id="premium-out-a">-0</span>
+                            </div>
+                            <div class="premium-row premium-net">
+                                <span>淨額:</span>
+                                <span id="premium-net-a">0 元</span>
+                            </div>
+                        </div>
+                    </div>
 
-                <!-- Premium Summary -->
-                <div class="premium-summary" id="premium-summary">
-                    <div class="premium-row">
-                        <span>賣出權利金收入:</span>
-                        <span class="profit" id="premium-in">+0 元</span>
+                    <!-- Strategy B -->
+                    <div class="strategy-column" id="strategy-col-b">
+                        <div class="strategy-header strategy-b">
+                            <span class="strategy-label">🔵 策略 B</span>
+                            <span class="strategy-count" id="count-b">0 筆</span>
+                        </div>
+                        <div class="positions-list" id="positions-list-b"></div>
+                        <div class="premium-summary">
+                            <div class="premium-row">
+                                <span>收入:</span>
+                                <span class="profit" id="premium-in-b">+0</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>支出:</span>
+                                <span class="loss" id="premium-out-b">-0</span>
+                            </div>
+                            <div class="premium-row premium-net">
+                                <span>淨額:</span>
+                                <span id="premium-net-b">0 元</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="premium-row">
-                        <span>買進權利金支出:</span>
-                        <span class="loss" id="premium-out">-0 元</span>
-                    </div>
-                    <hr>
-                    <div class="premium-row premium-net">
-                        <span>淨權利金:</span>
-                        <span id="premium-net">0 元</span>
-                    </div>
+                </div>
+
+                <!-- Add to Strategy -->
+                <div class="add-to-strategy">
+                    <span>新增倉位到:</span>
+                    <button class="btn btn-sm strategy-add-btn active" id="btn-add-to-a" data-strategy="A">🔴 A</button>
+                    <button class="btn btn-sm strategy-add-btn" id="btn-add-to-b" data-strategy="B">🔵 B</button>
                 </div>
             </section>
 
@@ -321,10 +357,9 @@
                         <thead>
                             <tr>
                                 <th>結算指數</th>
-                                <th>指數變動</th>
-                                <th>00631L</th>
-                                <th>選擇權組合</th>
-                                <th>總損益</th>
+                                <th class="col-strategy-a">🔴 策略 A</th>
+                                <th class="col-strategy-b">🔵 策略 B</th>
+                                <th>差異 (B-A)</th>
                             </tr>
                         </thead>
                         <tbody id="pnl-table-body">

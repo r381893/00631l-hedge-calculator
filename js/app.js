@@ -71,10 +71,17 @@ function cacheElements() {
     elements.hedgeSuggestion = document.getElementById('hedge-suggestion');
 
     elements.positionsSection = document.getElementById('positions-section');
-    elements.positionsList = document.getElementById('positions-list');
-    elements.premiumIn = document.getElementById('premium-in');
-    elements.premiumOut = document.getElementById('premium-out');
-    elements.premiumNet = document.getElementById('premium-net');
+    // Dual column positions
+    elements.positionsListA = document.getElementById('positions-list-a');
+    elements.positionsListB = document.getElementById('positions-list-b');
+    elements.countA = document.getElementById('count-a');
+    elements.countB = document.getElementById('count-b');
+    elements.premiumInA = document.getElementById('premium-in-a');
+    elements.premiumOutA = document.getElementById('premium-out-a');
+    elements.premiumNetA = document.getElementById('premium-net-a');
+    elements.premiumInB = document.getElementById('premium-in-b');
+    elements.premiumOutB = document.getElementById('premium-out-b');
+    elements.premiumNetB = document.getElementById('premium-net-b');
 
     elements.pnlTableBody = document.getElementById('pnl-table-body');
 
@@ -95,10 +102,11 @@ function cacheElements() {
     elements.futuresLots = document.getElementById('futures-lots');
     elements.btnAddFutures = document.getElementById('btn-add-futures');
 
-    // Strategy Switch Controls
-    elements.btnStrategyA = document.getElementById('btn-strategy-a');
-    elements.btnStrategyB = document.getElementById('btn-strategy-b');
+    // Strategy Controls
     elements.btnCopyStrategy = document.getElementById('btn-copy-strategy');
+    elements.btnClearStrategy = document.getElementById('btn-clear-strategy');
+    elements.btnAddToA = document.getElementById('btn-add-to-a');
+    elements.btnAddToB = document.getElementById('btn-add-to-b');
 
 
 
@@ -156,10 +164,11 @@ function bindEvents() {
     elements.btnAddOption?.addEventListener('click', handleAddOption);
     elements.btnAddFutures?.addEventListener('click', handleAddFutures);
 
-    // Strategy Switching
-    elements.btnStrategyA?.addEventListener('click', handleStrategySwitch);
-    elements.btnStrategyB?.addEventListener('click', handleStrategySwitch);
+    // Strategy Controls
     elements.btnCopyStrategy?.addEventListener('click', handleCopyStrategy);
+    elements.btnClearStrategy?.addEventListener('click', handleClearStrategy);
+    elements.btnAddToA?.addEventListener('click', () => handleAddToStrategyClick('A'));
+    elements.btnAddToB?.addEventListener('click', () => handleAddToStrategyClick('B'));
 
 
 
@@ -219,10 +228,10 @@ async function initApp() {
         // 更新 UI
         updateUI();
 
-        // 設定策略按鈕狀態
-        if (elements.btnStrategyA && elements.btnStrategyB) {
-            elements.btnStrategyA.classList.toggle('active', state.currentStrategy !== 'B');
-            elements.btnStrategyB.classList.toggle('active', state.currentStrategy === 'B');
+        // 設定策略選擇按鈕狀態
+        if (elements.btnAddToA && elements.btnAddToB) {
+            elements.btnAddToA.classList.toggle('active', state.currentStrategy === 'A');
+            elements.btnAddToB.classList.toggle('active', state.currentStrategy === 'B');
         }
 
         // 設定預設履約價
@@ -396,27 +405,41 @@ function updateETFSummary() {
 }
 
 /**
- * 更新倉位列表
+ * 更新倉位列表（雙欄顯示 A/B 策略）
  */
 function updatePositionsList() {
-    if (state.optionPositions.length === 0) {
+    const hasA = state.strategies.A.length > 0;
+    const hasB = state.strategies.B.length > 0;
+
+    if (!hasA && !hasB) {
         elements.positionsSection.style.display = 'none';
         return;
     }
 
     elements.positionsSection.style.display = 'block';
-    elements.positionsList.innerHTML = '';
 
-    state.optionPositions.forEach((pos, index) => {
-        const item = createPositionItem(pos, index);
-        elements.positionsList.appendChild(item);
+    // 渲染策略 A
+    elements.positionsListA.innerHTML = '';
+    state.strategies.A.forEach((pos, index) => {
+        const item = createPositionItem(pos, index, 'A');
+        elements.positionsListA.appendChild(item);
     });
+    elements.countA.textContent = `${state.strategies.A.length} 筆`;
+
+    // 渲染策略 B
+    elements.positionsListB.innerHTML = '';
+    state.strategies.B.forEach((pos, index) => {
+        const item = createPositionItem(pos, index, 'B');
+        elements.positionsListB.appendChild(item);
+    });
+    elements.countB.textContent = `${state.strategies.B.length} 筆`;
 }
 
 /**
  * 建立倉位項目 HTML
+ * @param {string} strategy - 策略標識 ('A' 或 'B')
  */
-function createPositionItem(pos, index) {
+function createPositionItem(pos, index, strategy = 'A') {
     const div = document.createElement('div');
     div.className = 'position-item';
 
@@ -445,28 +468,23 @@ function createPositionItem(pos, index) {
         const premiumSign = pos.direction === '賣出' ? '+' : '-';
 
         tagsHTML = `
-            <span class="position-tag tag-product">${pos.product || '台指'}</span>
             <span class="position-tag ${dirClass}">${pos.direction}</span>
             <span class="position-tag ${typeClass}">${typeLabel}</span>
         `;
         detailsHTML = `
             <span class="position-strike">${pos.strike.toLocaleString()}</span>
-            <span class="position-lots">×${pos.lots} 口</span>
-            <span>@${pos.premium} 點</span>
-            <span class="position-premium ${premiumClass}">${premiumSign}${premiumValue.toLocaleString()} 元</span>
+            <span class="position-lots">×${pos.lots}</span>
+            <span>@${pos.premium}點</span>
         `;
     }
 
     div.innerHTML = `
         <div class="position-info">
-            <span class="position-number">#${index + 1}</span>
             ${tagsHTML}
             ${detailsHTML}
         </div>
         <div class="position-actions">
-            <button class="position-btn" data-action="minus" data-index="${index}" title="減少口數">➖</button>
-            <button class="position-btn" data-action="plus" data-index="${index}" title="增加口數">➕</button>
-            <button class="position-btn delete" data-action="delete" data-index="${index}" title="刪除">🗑️</button>
+            <button class="position-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">🗑️</button>
         </div>
     `;
 
@@ -479,52 +497,79 @@ function createPositionItem(pos, index) {
 }
 
 /**
- * 更新權利金收支摘要
+ * 更新權利金收支摘要（雙欄）
  */
 function updatePremiumSummary() {
-    const summary = Calculator.calculatePremiumSummary(state.optionPositions);
+    // 策略 A
+    const summaryA = Calculator.calculatePremiumSummary(state.strategies.A);
+    elements.premiumInA.textContent = `+${summaryA.premiumIn.toLocaleString()}`;
+    elements.premiumOutA.textContent = `-${summaryA.premiumOut.toLocaleString()}`;
+    elements.premiumNetA.textContent = `${summaryA.netPremium >= 0 ? '+' : ''}${summaryA.netPremium.toLocaleString()} 元`;
+    elements.premiumNetA.className = summaryA.netPremium >= 0 ? 'profit' : 'loss';
 
-    elements.premiumIn.textContent = `+${summary.premiumIn.toLocaleString()} 元`;
-    elements.premiumOut.textContent = `-${summary.premiumOut.toLocaleString()} 元`;
-
-    const netClass = summary.netPremium >= 0 ? 'profit' : 'loss';
-    elements.premiumNet.textContent = `${summary.netPremium >= 0 ? '+' : ''}${summary.netPremium.toLocaleString()} 元`;
-    elements.premiumNet.className = netClass;
+    // 策略 B
+    const summaryB = Calculator.calculatePremiumSummary(state.strategies.B);
+    elements.premiumInB.textContent = `+${summaryB.premiumIn.toLocaleString()}`;
+    elements.premiumOutB.textContent = `-${summaryB.premiumOut.toLocaleString()}`;
+    elements.premiumNetB.textContent = `${summaryB.netPremium >= 0 ? '+' : ''}${summaryB.netPremium.toLocaleString()} 元`;
+    elements.premiumNetB.className = summaryB.netPremium >= 0 ? 'profit' : 'loss';
 }
 
 /**
- * 更新損益試算表
+ * 更新損益試算表（A/B 策略比較）
  */
 function updatePnLTable() {
-    const result = Calculator.calculatePnLCurve({
+    // 計算策略 A
+    const resultA = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
         etfCurrent: state.etfCurrentPrice,
-        positions: state.optionPositions
+        positions: state.strategies.A
+    });
+
+    // 計算策略 B
+    const resultB = Calculator.calculatePnLCurve({
+        centerPrice: state.tseIndex,
+        priceRange: state.priceRange,
+        etfLots: state.etfLots,
+        etfCost: state.etfCost,
+        etfCurrent: state.etfCurrentPrice,
+        positions: state.strategies.B
     });
 
     elements.pnlTableBody.innerHTML = '';
 
-    const { prices, etfProfits, optionProfits, combinedProfits } = result;
+    const { prices } = resultA;
+    const profitsA = resultA.combinedProfits;
+    const profitsB = resultB.combinedProfits;
+
+    const formatPnL = (val, extraClass = '') => {
+        const cls = val >= 0 ? 'profit' : 'loss';
+        const sign = val >= 0 ? '+' : '';
+        return `<span class="${cls} ${extraClass}">${sign}${val.toLocaleString()}</span>`;
+    };
 
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
-        const change = prices[i] - state.tseIndex;
 
-        const formatPnL = (val) => {
-            const cls = val >= 0 ? 'profit' : 'loss';
-            const sign = val >= 0 ? '+' : '';
-            return `<span class="${cls}">${sign}${val.toLocaleString()}</span>`;
-        };
+        const pnlA = Math.round(profitsA[i]);
+        const pnlB = Math.round(profitsB[i]);
+        const diff = pnlB - pnlA;
+        const diffClass = diff > 0 ? 'diff-positive' : (diff < 0 ? 'diff-negative' : '');
+        const diffSign = diff > 0 ? '+' : '';
+
+        // 高亮價平區域
+        if (Math.abs(prices[i] - state.tseIndex) < 50) {
+            row.classList.add('table-active');
+        }
 
         row.innerHTML = `
             <td>${prices[i].toLocaleString()}</td>
-            <td>${change >= 0 ? '+' : ''}${change.toLocaleString()}</td>
-            <td>${formatPnL(Math.round(etfProfits[i]))}</td>
-            <td>${formatPnL(Math.round(optionProfits[i]))}</td>
-            <td>${formatPnL(Math.round(combinedProfits[i]))}</td>
+            <td class="col-strategy-a">${formatPnL(pnlA)}</td>
+            <td class="col-strategy-b">${formatPnL(pnlB)}</td>
+            <td class="${diffClass}">${diffSign}${diff.toLocaleString()}</td>
         `;
 
         elements.pnlTableBody.appendChild(row);
@@ -625,11 +670,12 @@ function handleAddOption() {
         premium: parseFloat(elements.optPremium.value) || 0
     };
 
-    state.optionPositions.push(newPosition);
+    // 新增到當前選擇的策略
+    state.strategies[state.currentStrategy].push(newPosition);
     updateUI();
     updateChart();
     autoSave();
-    showToast('success', '已新增選擇權倉位');
+    showToast('success', `已新增到策略 ${state.currentStrategy}`);
 }
 
 function handleAddFutures() {
@@ -642,23 +688,22 @@ function handleAddFutures() {
         premium: 0
     };
 
-    state.optionPositions.push(newPosition);
+    // 新增到當前選擇的策略
+    state.strategies[state.currentStrategy].push(newPosition);
     updateUI();
     updateChart();
     autoSave();
-    showToast('success', '已新增微台期貨倉位');
+    showToast('success', `已新增到策略 ${state.currentStrategy}`);
 }
 
 function handlePositionAction(e) {
     const action = e.currentTarget.dataset.action;
     const index = parseInt(e.currentTarget.dataset.index);
+    const strategy = e.currentTarget.dataset.strategy || 'A';
+    const positions = state.strategies[strategy];
 
-    if (action === 'minus' && state.optionPositions[index].lots > 0) {
-        state.optionPositions[index].lots--;
-    } else if (action === 'plus') {
-        state.optionPositions[index].lots++;
-    } else if (action === 'delete') {
-        state.optionPositions.splice(index, 1);
+    if (action === 'delete' && positions[index]) {
+        positions.splice(index, 1);
     }
 
     updateUI();
@@ -687,8 +732,8 @@ async function handleSave() {
             etfCost: state.etfCost,
             etfCurrentPrice: state.etfCurrentPrice,
             hedgeRatio: state.hedgeRatio,
-            optionPositions: state.optionPositions,
-            strategyB: state.strategyB
+            optionPositions: state.strategies.A,
+            strategyB: { positions: state.strategies.B }
         });
         showToast('success', '資料已儲存');
     } catch (error) {
@@ -702,8 +747,8 @@ async function handleClear() {
     state.etfLots = 0;
     state.etfCost = 100;
     state.hedgeRatio = 0.2;
-    state.optionPositions = [];
-    state.strategyB = { positions: [] };
+    state.strategies.A = [];
+    state.strategies.B = [];
 
     await FirebaseModule.clearData();
     updateUI();
@@ -713,7 +758,45 @@ async function handleClear() {
 
 // handleComparisonTabClick 已移除（舊版獨立比較區塊，改用 handleStrategySwitch）
 
-// 舊版 handleCopyStrategy 已移除（見 line 1570 新版）
+// ======== 策略控制函數 ========
+
+/**
+ * 切換新增倉位的目標策略
+ */
+function handleAddToStrategyClick(strategy) {
+    state.currentStrategy = strategy;
+
+    // 更新按鈕樣式
+    elements.btnAddToA?.classList.toggle('active', strategy === 'A');
+    elements.btnAddToB?.classList.toggle('active', strategy === 'B');
+
+    showToast('info', `新增倉位將加入策略 ${strategy}`);
+}
+
+/**
+ * 複製策略 A 到 B
+ */
+function handleCopyStrategy() {
+    state.strategies.B = JSON.parse(JSON.stringify(state.strategies.A));
+    updateUI();
+    updateChart();
+    autoSave();
+    showToast('success', '已將策略 A 複製到策略 B');
+}
+
+/**
+ * 清空當前策略
+ */
+function handleClearStrategy() {
+    const current = state.currentStrategy;
+    if (!confirm(`確定要清空策略 ${current} 的所有倉位嗎？`)) return;
+
+    state.strategies[current] = [];
+    updateUI();
+    updateChart();
+    autoSave();
+    showToast('success', `已清空策略 ${current}`);
+}
 
 function handleCompare() {
     if (state.strategyB.positions.length === 0) {
@@ -752,8 +835,8 @@ function autoSave() {
             etfCost: state.etfCost,
             etfCurrentPrice: state.etfCurrentPrice,
             hedgeRatio: state.hedgeRatio,
-            optionPositions: state.optionPositions,
-            strategyB: state.strategyB
+            optionPositions: state.strategies.A,
+            strategyB: { positions: state.strategies.B }
         });
     }, 1000);
 }
