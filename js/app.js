@@ -699,7 +699,7 @@ function updateChart() {
         resultB
     );
 
-    updatePnLTable(resultA, resultB);
+    updatePnLTable();
 }
 
 /**
@@ -1463,97 +1463,4 @@ function handleCopyStrategy() {
     autoSave();
 }
 
-/**
- * 更新損益試算表 (支援 A/B 比較)
- * 覆寫舊函數以支援雙參數
- */
-function updatePnLTable(dataA, dataB = null) {
-    if (!dataA) return;
-
-    elements.pnlTableBody.innerHTML = '';
-
-    const { prices } = dataA;
-    const profitsA = dataA.combinedProfits;
-    const profitsB = dataB ? dataB.combinedProfits : null;
-
-    // 更新表頭
-    updatePnLTableHeader(!!dataB);
-
-    for (let i = 0; i < prices.length; i++) {
-        const row = document.createElement('tr');
-
-        // 價平高亮
-        if (Math.abs(prices[i] - state.tseIndex) < 50) {
-            row.classList.add('table-active');
-        }
-
-        const change = prices[i] - state.tseIndex;
-        const changeSign = change > 0 ? '+' : '';
-        const changeClass = change > 0 ? 'profit' : (change < 0 ? 'loss' : '');
-
-        const formatPnL = (val, extraClass = '') => {
-            const cls = val >= 0 ? 'profit' : 'loss';
-            const sign = val >= 0 ? '+' : '';
-            return `<span class="${cls} ${extraClass}">${sign}${val.toLocaleString()}</span>`;
-        };
-
-        const profitA = Math.round(profitsA[i]);
-        let cells = `
-            <td>${prices[i].toLocaleString()}</td>
-            <td class="${changeClass}">${changeSign}${change.toLocaleString()}</td>
-        `;
-
-        // 策略比較模式
-        if (profitsB) {
-            const profitB = Math.round(profitsB[i]);
-            const diff = profitB - profitA;
-            const diffClass = diff > 0 ? 'diff-positive' : (diff < 0 ? 'diff-negative' : '');
-            const diffSign = diff > 0 ? '+' : '';
-
-            cells += `
-                <td class="col-strategy-a">${formatPnL(profitA)}</td>
-                <td class="col-strategy-b">${formatPnL(profitB)}</td>
-                <td class="${diffClass}">${diffSign}${diff.toLocaleString()}</td>
-            `;
-        } else {
-            // 單一策略模式
-            const etfProfit = Math.round(dataA.etfProfits[i]);
-            const optProfit = Math.round(dataA.optionProfits[i]);
-            cells += `
-                <td>${formatPnL(etfProfit)}</td>
-                <td>${formatPnL(optProfit)}</td>
-                <td>${formatPnL(profitA)}</td>
-            `;
-        }
-
-        row.innerHTML = cells;
-        elements.pnlTableBody.appendChild(row);
-    }
-}
-
-/**
- * 更新表格標題
- */
-function updatePnLTableHeader(showComparison) {
-    const thead = document.querySelector('.table thead tr');
-    if (!thead) return;
-
-    if (showComparison) {
-        thead.innerHTML = `
-            <th>結算指數</th>
-            <th>指數變動</th>
-            <th>🔴 策略 A 損益</th>
-            <th>🔵 策略 B 損益</th>
-            <th>差異 (B-A)</th>
-        `;
-    } else {
-        thead.innerHTML = `
-            <th>結算指數</th>
-            <th>指數變動</th>
-            <th>00631L</th>
-            <th>選擇權組合</th>
-            <th>總損益</th>
-        `;
-    }
-}
 
