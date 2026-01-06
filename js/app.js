@@ -17,6 +17,7 @@ const state = {
     hedgeRatio: 0.2,
     tseIndex: 23000,
     priceRange: 1500,
+    accountPnL: 0, // 帳戶已實現損益
 
     // 策略管理
     strategies: strategies,
@@ -51,6 +52,7 @@ function cacheElements() {
     elements.etfCostInput = document.getElementById('etf-cost');
     elements.etfCurrentInput = document.getElementById('etf-current');
     elements.hedgeRatioInput = document.getElementById('hedge-ratio');
+    elements.accountPnLInput = document.getElementById('account-pnl');
     elements.suggestedLots = document.getElementById('suggested-lots');
     elements.suggestedCalc = document.getElementById('suggested-calc');
     elements.priceRangeInput = document.getElementById('price-range');
@@ -148,6 +150,7 @@ function bindEvents() {
     elements.etfCostInput?.addEventListener('change', handleSettingsChange);
     elements.etfCurrentInput?.addEventListener('change', handleSettingsChange);
     elements.hedgeRatioInput?.addEventListener('change', handleSettingsChange);
+    elements.accountPnLInput?.addEventListener('change', handleSettingsChange);
     elements.priceRangeInput?.addEventListener('change', handleSettingsChange);
 
     // File Operations
@@ -516,7 +519,7 @@ function updatePremiumSummary() {
 }
 
 /**
- * 更新損益試算表（A/B 策略比較）
+ * 更新損益試算表（完整版）
  */
 function updatePnLTable() {
     // 計算策略 A
@@ -541,14 +544,14 @@ function updatePnLTable() {
 
     elements.pnlTableBody.innerHTML = '';
 
-    const { prices } = resultA;
-    const profitsA = resultA.combinedProfits;
-    const profitsB = resultB.combinedProfits;
+    const { prices, etfProfits, optionProfits, combinedProfits: profitsA } = resultA;
+    const { combinedProfits: profitsB } = resultB;
+    const accountPnL = state.accountPnL || 0;
 
-    const formatPnL = (val, extraClass = '') => {
+    const formatPnL = (val) => {
         const cls = val >= 0 ? 'profit' : 'loss';
         const sign = val >= 0 ? '+' : '';
-        return `<span class="${cls} ${extraClass}">${sign}${val.toLocaleString()}</span>`;
+        return `<span class="${cls}">${sign}${val.toLocaleString()}</span>`;
     };
 
     for (let i = 0; i < prices.length; i++) {
@@ -556,9 +559,9 @@ function updatePnLTable() {
 
         const pnlA = Math.round(profitsA[i]);
         const pnlB = Math.round(profitsB[i]);
-        const diff = pnlB - pnlA;
-        const diffClass = diff > 0 ? 'diff-positive' : (diff < 0 ? 'diff-negative' : '');
-        const diffSign = diff > 0 ? '+' : '';
+        const etfPnL = Math.round(etfProfits[i]);
+        const optPnL = Math.round(optionProfits[i]);
+        const totalPnL = etfPnL + optPnL + accountPnL;
 
         // 高亮價平區域
         if (Math.abs(prices[i] - state.tseIndex) < 50) {
@@ -569,7 +572,10 @@ function updatePnLTable() {
             <td>${prices[i].toLocaleString()}</td>
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
-            <td class="${diffClass}">${diffSign}${diff.toLocaleString()}</td>
+            <td>${formatPnL(etfPnL)}</td>
+            <td>${formatPnL(optPnL)}</td>
+            <td>${formatPnL(accountPnL)}</td>
+            <td><strong>${formatPnL(totalPnL)}</strong></td>
         `;
 
         elements.pnlTableBody.appendChild(row);
@@ -636,6 +642,7 @@ function handleSettingsChange() {
     state.etfCost = parseFloat(elements.etfCostInput.value) || 0;
     state.etfCurrentPrice = parseFloat(elements.etfCurrentInput.value) || 0;
     state.hedgeRatio = parseFloat(elements.hedgeRatioInput.value) || 0;
+    state.accountPnL = parseFloat(elements.accountPnLInput?.value) || 0;
     state.priceRange = parseInt(elements.priceRangeInput.value) || 1500;
 
     updateUI();

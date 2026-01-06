@@ -84,6 +84,16 @@
                     </div>
                 </div>
 
+                <!-- Account PnL -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">💵 帳戶損益</h3>
+                    <div class="form-group">
+                        <label for="account-pnl">選擇權帳戶已實現損益 (元)</label>
+                        <input type="number" id="account-pnl" value="0" step="1000">
+                        <span class="form-hint">例如：-200000 表示虧損20萬</span>
+                    </div>
+                </div>
+
                 <!-- Simulation Settings -->
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">📈 模擬設定</h3>
@@ -359,7 +369,10 @@
                                 <th>結算指數</th>
                                 <th class="col-strategy-a">🔴 策略 A</th>
                                 <th class="col-strategy-b">🔵 策略 B</th>
-                                <th>差異 (B-A)</th>
+                                <th>00631L</th>
+                                <th>選擇權</th>
+                                <th>帳戶</th>
+                                <th>總損益</th>
                             </tr>
                         </thead>
                         <tbody id="pnl-table-body">
