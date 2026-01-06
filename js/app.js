@@ -219,15 +219,27 @@ async function initApp() {
                 state.hedgeRatio = savedData.hedgeRatio || 0.2;
                 state.priceRange = savedData.priceRange || 1500;
                 state.tseIndex = savedData.tseIndex || 23000;
+                state.accountCost = savedData.accountCost || 0;
+                state.accountBalance = savedData.accountBalance || 0;
             } else if (savedData.strategies) {
                 // 新資料結構
                 Object.assign(state, savedData);
                 // 確保 optionPositions 正確指向
                 state.currentStrategy = savedData.currentStrategy || 'A';
                 state.optionPositions = state.strategies[state.currentStrategy];
+                // 確保帳戶資料有預設值
+                state.accountCost = savedData.accountCost || 0;
+                state.accountBalance = savedData.accountBalance || 0;
             } else {
                 Object.assign(state, savedData);
+                state.accountCost = savedData.accountCost || 0;
+                state.accountBalance = savedData.accountBalance || 0;
             }
+
+            // 更新帳戶輸入欄位
+            if (elements.accountCostInput) elements.accountCostInput.value = state.accountCost;
+            if (elements.accountBalanceInput) elements.accountBalanceInput.value = state.accountBalance;
+            updateAccountPnLDisplay();
         }
 
         // 抓取即時價格
@@ -653,7 +665,6 @@ function updatePnLTable() {
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
             <td>${formatPnL(etfPnL)}</td>
-            <td>${formatPnL(pnlA)}</td>
             <td>${formatPnL(accountPnL)}</td>
             <td><strong>${formatPnL(totalPnL)}</strong></td>
         `;
@@ -926,6 +937,8 @@ function autoSave() {
             etfCost: state.etfCost,
             etfCurrentPrice: state.etfCurrentPrice,
             hedgeRatio: state.hedgeRatio,
+            accountCost: state.accountCost,
+            accountBalance: state.accountBalance,
             optionPositions: state.strategies.A,
             strategyB: { positions: state.strategies.B }
         });
