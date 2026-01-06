@@ -586,14 +586,17 @@ function updatePnLTable() {
         const etfPnL = Math.round(etfProfits[i]);
         const optPnL = Math.round(optionProfits[i]);
         const totalPnL = etfPnL + optPnL + accountPnL;
+        const change = prices[i] - state.tseIndex;
 
         // 高亮價平區域
-        if (Math.abs(prices[i] - state.tseIndex) < 50) {
+        if (Math.abs(change) < 50) {
             row.classList.add('table-active');
         }
 
+        const changeStr = change >= 0 ? `+${change.toLocaleString()}` : change.toLocaleString();
+
         row.innerHTML = `
-            <td>${prices[i].toLocaleString()}</td>
+            <td>${changeStr}</td>
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
             <td>${formatPnL(etfPnL)}</td>
