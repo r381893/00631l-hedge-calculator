@@ -383,6 +383,26 @@ a:hover {
     font-size: 1.1rem;
 }
 
+/* Account PnL Display */
+.account-pnl-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    margin-top: 8px;
+    font-weight: 600;
+}
+
+.account-pnl-display .profit {
+    color: var(--success);
+}
+
+.account-pnl-display .loss {
+    color: var(--danger);
+}
+
 /* Firebase Status */
 .firebase-status {
     margin-top: auto;

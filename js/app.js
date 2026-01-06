@@ -17,7 +17,8 @@ const state = {
     hedgeRatio: 0.2,
     tseIndex: 23000,
     priceRange: 1500,
-    accountPnL: 0, // 帳戶已實現損益
+    accountCost: 0, // 帳戶成本
+    accountBalance: 0, // 目前餘額
 
     // 策略管理
     strategies: strategies,
@@ -52,7 +53,9 @@ function cacheElements() {
     elements.etfCostInput = document.getElementById('etf-cost');
     elements.etfCurrentInput = document.getElementById('etf-current');
     elements.hedgeRatioInput = document.getElementById('hedge-ratio');
-    elements.accountPnLInput = document.getElementById('account-pnl');
+    elements.accountCostInput = document.getElementById('account-cost');
+    elements.accountBalanceInput = document.getElementById('account-balance');
+    elements.accountPnLValue = document.getElementById('account-pnl-value');
     elements.suggestedLots = document.getElementById('suggested-lots');
     elements.suggestedCalc = document.getElementById('suggested-calc');
     elements.priceRangeInput = document.getElementById('price-range');
@@ -150,7 +153,8 @@ function bindEvents() {
     elements.etfCostInput?.addEventListener('change', handleSettingsChange);
     elements.etfCurrentInput?.addEventListener('change', handleSettingsChange);
     elements.hedgeRatioInput?.addEventListener('change', handleSettingsChange);
-    elements.accountPnLInput?.addEventListener('change', handleSettingsChange);
+    elements.accountCostInput?.addEventListener('change', handleSettingsChange);
+    elements.accountBalanceInput?.addEventListener('change', handleSettingsChange);
     elements.priceRangeInput?.addEventListener('change', handleSettingsChange);
 
     // File Operations
@@ -408,6 +412,26 @@ function updateETFSummary() {
 }
 
 /**
+ * 更新帳戶損益顯示
+ */
+function updateAccountPnLDisplay() {
+    const accountPnL = state.accountBalance - state.accountCost;
+    if (elements.accountPnLValue) {
+        const cls = accountPnL >= 0 ? 'profit' : 'loss';
+        const sign = accountPnL >= 0 ? '+' : '';
+        elements.accountPnLValue.textContent = `${sign}${accountPnL.toLocaleString()} 元`;
+        elements.accountPnLValue.className = cls;
+    }
+}
+
+/**
+ * 計算帳戶損益
+ */
+function getAccountPnL() {
+    return state.accountBalance - state.accountCost;
+}
+
+/**
  * 更新倉位列表（雙欄顯示 A/B 策略）
  */
 function updatePositionsList() {
@@ -546,7 +570,7 @@ function updatePnLTable() {
 
     const { prices, etfProfits, optionProfits, combinedProfits: profitsA } = resultA;
     const { combinedProfits: profitsB } = resultB;
-    const accountPnL = state.accountPnL || 0;
+    const accountPnL = getAccountPnL();
 
     const formatPnL = (val) => {
         const cls = val >= 0 ? 'profit' : 'loss';
@@ -642,8 +666,12 @@ function handleSettingsChange() {
     state.etfCost = parseFloat(elements.etfCostInput.value) || 0;
     state.etfCurrentPrice = parseFloat(elements.etfCurrentInput.value) || 0;
     state.hedgeRatio = parseFloat(elements.hedgeRatioInput.value) || 0;
-    state.accountPnL = parseFloat(elements.accountPnLInput?.value) || 0;
+    state.accountCost = parseFloat(elements.accountCostInput?.value) || 0;
+    state.accountBalance = parseFloat(elements.accountBalanceInput?.value) || 0;
     state.priceRange = parseInt(elements.priceRangeInput.value) || 1500;
+
+    // 更新帳戶損益顯示
+    updateAccountPnLDisplay();
 
     updateUI();
     updateChart();
