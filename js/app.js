@@ -683,6 +683,14 @@ function updatePnLTable() {
         const totalPnL = etfPnL + pnlA + accountPnL;
         const change = prices[i] - state.tseIndex;
 
+        // 計算 ETF 每 100 點差異（與下一個資料點比較）
+        let etfDelta = '--';
+        if (i < prices.length - 1) {
+            const nextEtfPnL = Math.round(etfProfits[i + 1]);
+            const delta = nextEtfPnL - etfPnL;
+            etfDelta = formatPnL(delta);
+        }
+
         // 高亮價平區域
         if (Math.abs(change) < 50) {
             row.classList.add('table-active');
@@ -695,6 +703,7 @@ function updatePnLTable() {
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
             <td>${formatPnL(etfPnL)}</td>
+            <td class="col-etf-delta">${etfDelta}</td>
             <td>${formatPnL(accountPnL)}</td>
             <td><strong>${formatPnL(totalPnL)}</strong></td>
         `;
