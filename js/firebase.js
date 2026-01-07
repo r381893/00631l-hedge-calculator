@@ -30,6 +30,8 @@ const DEFAULT_DATA = {
     strategyB: {
         positions: []
     },
+    accountCost: 0,       // 帳戶成本
+    accountBalance: 0,    // 目前餘額
     lastUpdated: null
 };
 

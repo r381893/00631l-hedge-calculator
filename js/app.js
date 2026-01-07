@@ -858,6 +858,8 @@ async function handleSave() {
             etfCost: state.etfCost,
             etfCurrentPrice: state.etfCurrentPrice,
             hedgeRatio: state.hedgeRatio,
+            accountCost: state.accountCost,
+            accountBalance: state.accountBalance,
             optionPositions: state.strategies.A,
             strategyB: { positions: state.strategies.B }
         });
