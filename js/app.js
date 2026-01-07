@@ -562,7 +562,7 @@ function createPositionItem(pos, index, strategy = 'A') {
         `;
         detailsHTML = `
             <span class="position-strike">進場 ${pos.strike.toLocaleString()}</span>
-            <span class="position-lots">×${pos.lots} 口</span>
+            <span class="position-lots-wrap">×<input type="number" class="position-lots-input" value="${pos.lots}" min="1" max="999" data-index="${index}" data-strategy="${strategy}"> 口</span>
         `;
     } else {
         const typeClass = pos.type === 'Call' ? 'tag-call' : 'tag-put';
@@ -580,7 +580,7 @@ function createPositionItem(pos, index, strategy = 'A') {
         `;
         detailsHTML = `
             <span class="position-strike">${pos.strike.toLocaleString()}</span>
-            <span class="position-lots">×${pos.lots}</span>
+            <span class="position-lots-wrap">×<input type="number" class="position-lots-input" value="${pos.lots}" min="1" max="999" data-index="${index}" data-strategy="${strategy}"></span>
             <span>@${pos.premium}點</span>
         `;
     }
@@ -598,6 +598,11 @@ function createPositionItem(pos, index, strategy = 'A') {
     // 綁定按鈕事件
     div.querySelectorAll('.position-btn').forEach(btn => {
         btn.addEventListener('click', handlePositionAction);
+    });
+
+    // 綁定口數輸入事件
+    div.querySelectorAll('.position-lots-input').forEach(input => {
+        input.addEventListener('change', handleLotsChange);
     });
 
     return div;
@@ -827,6 +832,23 @@ function handlePositionAction(e) {
     updateUI();
     updateChart();
     autoSave();
+}
+
+/**
+ * 處理口數變更
+ */
+function handleLotsChange(e) {
+    const index = parseInt(e.target.dataset.index);
+    const strategy = e.target.dataset.strategy || 'A';
+    const newLots = parseInt(e.target.value) || 1;
+
+    if (state.strategies[strategy][index]) {
+        state.strategies[strategy][index].lots = Math.max(1, Math.min(999, newLots));
+        updateUI();
+        updateChart();
+        autoSave();
+        showToast('success', `已更新口數為 ${state.strategies[strategy][index].lots}`);
+    }
 }
 
 async function handleReload() {

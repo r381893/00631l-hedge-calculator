@@ -751,6 +751,50 @@ a:hover {
     color: var(--accent-light);
 }
 
+.position-lots-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-weight: 700;
+    color: var(--accent-light);
+}
+
+.position-lots-input {
+    width: 45px;
+    padding: 2px 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--accent-light);
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: inherit;
+    text-align: center;
+    transition: all var(--transition-fast);
+}
+
+.position-lots-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.position-lots-input:hover {
+    border-color: var(--accent);
+}
+
+/* 隱藏 number input 的箭頭 */
+.position-lots-input::-webkit-outer-spin-button,
+.position-lots-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.position-lots-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 .position-premium {
     font-weight: 600;
 }
