@@ -47,8 +47,12 @@ const chartDefaults = {
                 size: 13
             },
             callbacks: {
+                title: function (context) {
+                    const y = context[0].parsed.y;
+                    return `結算指數: ${y.toLocaleString()}`;
+                },
                 label: function (context) {
-                    const value = context.parsed.y;
+                    const value = context.parsed.x;
                     const formatted = value >= 0
                         ? `+${value.toLocaleString()}`
                         : value.toLocaleString();
@@ -69,17 +73,13 @@ const chartDefaults = {
                     family: "'Noto Sans TC', sans-serif",
                     size: 11
                 },
-                callback: function (value, index) {
-                    // 只顯示部分標籤避免擁擠
-                    if (index % 3 === 0) {
-                        return this.getLabelForValue(value);
-                    }
-                    return '';
+                callback: function (value) {
+                    return value.toLocaleString();
                 }
             },
             title: {
                 display: true,
-                text: '結算指數',
+                text: '損益 (元)',
                 color: '#94a3b8',
                 font: {
                     family: "'Noto Sans TC', sans-serif",
@@ -98,13 +98,17 @@ const chartDefaults = {
                     family: "'Noto Sans TC', sans-serif",
                     size: 11
                 },
-                callback: function (value) {
-                    return value.toLocaleString();
+                callback: function (value, index) {
+                    // 只顯示部分標籤避免擁擠
+                    if (index % 2 === 0) {
+                        return value.toLocaleString();
+                    }
+                    return '';
                 }
             },
             title: {
                 display: true,
-                text: '損益 (元)',
+                text: '結算指數',
                 color: '#94a3b8',
                 font: {
                     family: "'Noto Sans TC', sans-serif",
@@ -129,9 +133,8 @@ function initPnLChart(canvasId) {
     }
 
     pnlChart = new Chart(ctx, {
-        type: 'line',
+        type: 'scatter',
         data: {
-            labels: [],
             datasets: []
         },
         options: {
@@ -150,6 +153,7 @@ function initPnLChart(canvasId) {
 
 /**
  * 更新損益曲線圖表 (支援 A/B 比較)
+ * X軸 = 損益（元），Y軸 = 結算指數
  * @param {Object} data - 策略 A 計算結果
  * @param {number} currentIndex - 當前指數
  * @param {boolean} showETF - 是否顯示 ETF 曲線
@@ -165,8 +169,10 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
 
     const { prices, etfProfits, optionProfits, combinedProfits } = data;
 
-    // 格式化標籤
-    const labels = prices.map(p => p.toLocaleString());
+    // 轉換為 scatter 格式：{x: 損益, y: 指數}
+    const toScatterData = (profits) => {
+        return prices.map((price, i) => ({ x: profits[i], y: price }));
+    };
 
     // 建立資料集
     const datasets = [];
@@ -176,7 +182,7 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
         if (showETF && etfProfits.some(v => v !== 0)) {
             datasets.push({
                 label: '00631L',
-                data: etfProfits,
+                data: toScatterData(etfProfits),
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 borderWidth: 2,
@@ -184,14 +190,15 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
                 pointRadius: 0,
                 pointHoverRadius: 5,
                 tension: 0.1,
-                fill: false
+                fill: false,
+                showLine: true
             });
         }
 
         if (showOptions && optionProfits.some(v => v !== 0)) {
             datasets.push({
                 label: '選擇權',
-                data: optionProfits,
+                data: toScatterData(optionProfits),
                 borderColor: '#f59e0b',
                 backgroundColor: 'rgba(245, 158, 11, 0.1)',
                 borderWidth: 2,
@@ -199,7 +206,8 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
                 pointRadius: 0,
                 pointHoverRadius: 5,
                 tension: 0.1,
-                fill: false
+                fill: false,
+                showLine: true
             });
         }
     }
@@ -207,21 +215,22 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
     // 策略 A 總損益
     datasets.push({
         label: dataB ? '策略 A 損益' : '組合總損益',
-        data: combinedProfits,
+        data: toScatterData(combinedProfits),
         borderColor: '#ef4444', // 红色
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         borderWidth: 3,
         pointRadius: 0,
         pointHoverRadius: 6,
         tension: 0.1,
-        fill: !dataB // 如果有比較，就不填滿背景
+        fill: !dataB, // 如果有比較，就不填滿背景
+        showLine: true
     });
 
     // 策略 B 總損益 (如果有)
     if (dataB) {
         datasets.push({
             label: '策略 B 損益',
-            data: dataB.combinedProfits,
+            data: toScatterData(dataB.combinedProfits),
             borderColor: '#3b82f6', // 藍色
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             borderWidth: 3,
@@ -229,28 +238,28 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
             pointRadius: 0,
             pointHoverRadius: 6,
             tension: 0.1,
-            fill: false
+            fill: false,
+            showLine: true
         });
     }
 
     // 更新圖表
-    pnlChart.data.labels = labels;
     pnlChart.data.datasets = datasets;
 
-    // 新增零線標註
+    // 新增標註線（X=0 零線 和 Y=現價 水平線）
     pnlChart.options.plugins.annotation = {
         annotations: {
             zeroLine: {
                 type: 'line',
-                yMin: 0,
-                yMax: 0,
+                xMin: 0,
+                xMax: 0,
                 borderColor: 'rgba(148, 163, 184, 0.5)',
                 borderWidth: 1
             },
             currentLine: {
                 type: 'line',
-                xMin: labels.indexOf(currentIndex.toLocaleString()),
-                xMax: labels.indexOf(currentIndex.toLocaleString()),
+                yMin: currentIndex,
+                yMax: currentIndex,
                 borderColor: 'rgba(239, 68, 68, 0.7)',
                 borderWidth: 2,
                 borderDash: [5, 5],
