@@ -684,20 +684,12 @@ function updatePnLTable() {
         const change = prices[i] - state.tseIndex;
 
 
-        // 計算 ETF 每 100 點差異
-        // 公式：100點 / 該指數水平 = 大盤漲跌% → ETF 漲跌 = 2x 大盤%
-        // ETF 損益 = 市值 × ETF漲跌%
+        // 計算 ETF 每 100 點差異（與下一行的實際差值）
         let etfDelta = '--';
-        if (state.etfLots > 0 && prices[i] > 0) {
-            // 每 100 點對該指數水平的百分比（指數越高，100點百分比越小）
-            const indexPct = 100 / prices[i];
-            // 00631L 是 2 倍槓桿
-            const etfPct = indexPct * 2;
-            // 市值
-            const marketValue = state.etfLots * state.etfCurrentPrice * 1000;
-            // 每 100 點的損益變化
-            const deltaValue = Math.round(marketValue * etfPct);
-            etfDelta = formatPnL(deltaValue);
+        if (i < prices.length - 1) {
+            const nextEtfPnL = Math.round(etfProfits[i + 1]);
+            const delta = nextEtfPnL - etfPnL;
+            etfDelta = formatPnL(delta);
         }
 
         // 高亮價平區域
