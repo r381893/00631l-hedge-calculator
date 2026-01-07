@@ -751,48 +751,55 @@ a:hover {
     color: var(--accent-light);
 }
 
-.position-lots-wrap {
+.position-lots-stepper {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    font-weight: 700;
-    color: var(--accent-light);
-}
-
-.position-lots-input {
-    width: 45px;
-    padding: 2px 4px;
+    gap: 4px;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 2px 4px;
+}
+
+.lots-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: var(--accent-light);
-    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-size: 1rem;
     font-weight: 700;
-    font-family: inherit;
-    text-align: center;
+    cursor: pointer;
     transition: all var(--transition-fast);
+    font-family: inherit;
 }
 
-.position-lots-input:focus {
-    outline: none;
+.lots-btn:hover {
+    background: var(--accent);
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    color: white;
 }
 
-.position-lots-input:hover {
-    border-color: var(--accent);
+.lots-btn:active {
+    transform: scale(0.95);
 }
 
-/* 隱藏 number input 的箭頭 */
-.position-lots-input::-webkit-outer-spin-button,
-.position-lots-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+.lots-value {
+    min-width: 28px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent-light);
+    font-size: 0.95rem;
 }
 
-.position-lots-input[type=number] {
-    -moz-appearance: textfield;
-    appearance: textfield;
+.lots-unit {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-left: 2px;
 }
 
 .position-premium {

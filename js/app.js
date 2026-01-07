@@ -562,7 +562,12 @@ function createPositionItem(pos, index, strategy = 'A') {
         `;
         detailsHTML = `
             <span class="position-strike">進場 ${pos.strike.toLocaleString()}</span>
-            <span class="position-lots-wrap">×<input type="number" class="position-lots-input" value="${pos.lots}" min="1" max="999" data-index="${index}" data-strategy="${strategy}"> 口</span>
+            <span class="position-lots-stepper">
+                <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}">−</button>
+                <span class="lots-value">${pos.lots}</span>
+                <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}">+</button>
+                <span class="lots-unit">口</span>
+            </span>
         `;
     } else {
         const typeClass = pos.type === 'Call' ? 'tag-call' : 'tag-put';
@@ -580,7 +585,11 @@ function createPositionItem(pos, index, strategy = 'A') {
         `;
         detailsHTML = `
             <span class="position-strike">${pos.strike.toLocaleString()}</span>
-            <span class="position-lots-wrap">×<input type="number" class="position-lots-input" value="${pos.lots}" min="1" max="999" data-index="${index}" data-strategy="${strategy}"></span>
+            <span class="position-lots-stepper">
+                <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}">−</button>
+                <span class="lots-value">${pos.lots}</span>
+                <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}">+</button>
+            </span>
             <span>@${pos.premium}點</span>
         `;
     }
@@ -595,14 +604,14 @@ function createPositionItem(pos, index, strategy = 'A') {
         </div>
     `;
 
-    // 綁定按鈕事件
+    // 綁定刪除按鈕事件
     div.querySelectorAll('.position-btn').forEach(btn => {
         btn.addEventListener('click', handlePositionAction);
     });
 
-    // 綁定口數輸入事件
-    div.querySelectorAll('.position-lots-input').forEach(input => {
-        input.addEventListener('change', handleLotsChange);
+    // 綁定口數調整按鈕事件
+    div.querySelectorAll('.lots-btn').forEach(btn => {
+        btn.addEventListener('click', handleLotsStepper);
     });
 
     return div;
@@ -835,19 +844,23 @@ function handlePositionAction(e) {
 }
 
 /**
- * 處理口數變更
+ * 處理口數調整按鈕點擊
  */
-function handleLotsChange(e) {
+function handleLotsStepper(e) {
     const index = parseInt(e.target.dataset.index);
     const strategy = e.target.dataset.strategy || 'A';
-    const newLots = parseInt(e.target.value) || 1;
+    const isPlus = e.target.classList.contains('lots-plus');
 
     if (state.strategies[strategy][index]) {
-        state.strategies[strategy][index].lots = Math.max(1, Math.min(999, newLots));
-        updateUI();
-        updateChart();
-        autoSave();
-        showToast('success', `已更新口數為 ${state.strategies[strategy][index].lots}`);
+        const currentLots = state.strategies[strategy][index].lots;
+        const newLots = isPlus ? currentLots + 1 : currentLots - 1;
+
+        if (newLots >= 1 && newLots <= 999) {
+            state.strategies[strategy][index].lots = newLots;
+            updateUI();
+            updateChart();
+            autoSave();
+        }
     }
 }
 
