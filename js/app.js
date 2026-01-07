@@ -206,35 +206,27 @@ async function initApp() {
         // 載入資料
         const savedData = await FirebaseModule.loadData();
         if (savedData) {
-            // 資料遷移：如果舊資料只有 optionPositions，移到 strategies.A
-            if (!savedData.strategies && savedData.optionPositions) {
+            // 資料遷移：處理各種儲存格式
+            if (savedData.optionPositions) {
                 state.strategies.A = savedData.optionPositions;
-                state.strategies.B = []; // 初始化空的 B
-                state.optionPositions = state.strategies.A; // 恢復參考
-
-                // 也要還原其他欄位
-                state.etfLots = savedData.etfLots || 0;
-                state.etfCost = savedData.etfCost || 100;
-                state.etfCurrentPrice = savedData.etfCurrentPrice || 100;
-                state.hedgeRatio = savedData.hedgeRatio || 0.2;
-                state.priceRange = savedData.priceRange || 1500;
-                state.tseIndex = savedData.tseIndex || 23000;
-                state.accountCost = savedData.accountCost || 0;
-                state.accountBalance = savedData.accountBalance || 0;
-            } else if (savedData.strategies) {
-                // 新資料結構
-                Object.assign(state, savedData);
-                // 確保 optionPositions 正確指向
-                state.currentStrategy = savedData.currentStrategy || 'A';
-                state.optionPositions = state.strategies[state.currentStrategy];
-                // 確保帳戶資料有預設值
-                state.accountCost = savedData.accountCost || 0;
-                state.accountBalance = savedData.accountBalance || 0;
-            } else {
-                Object.assign(state, savedData);
-                state.accountCost = savedData.accountCost || 0;
-                state.accountBalance = savedData.accountBalance || 0;
             }
+            if (savedData.strategyB && savedData.strategyB.positions) {
+                state.strategies.B = savedData.strategyB.positions;
+            }
+
+            // 還原其他欄位
+            state.etfLots = savedData.etfLots || 0;
+            state.etfCost = savedData.etfCost || 100;
+            state.etfCurrentPrice = savedData.etfCurrentPrice || 100;
+            state.hedgeRatio = savedData.hedgeRatio || 0.2;
+            state.priceRange = savedData.priceRange || 1500;
+            state.tseIndex = savedData.tseIndex || 23000;
+            state.accountCost = savedData.accountCost || 0;
+            state.accountBalance = savedData.accountBalance || 0;
+            state.currentStrategy = savedData.currentStrategy || 'A';
+
+            // 確保 optionPositions 正確指向
+            state.optionPositions = state.strategies[state.currentStrategy];
 
             // 更新帳戶輸入欄位
             if (elements.accountCostInput) elements.accountCostInput.value = state.accountCost;
@@ -860,6 +852,7 @@ async function handleSave() {
             hedgeRatio: state.hedgeRatio,
             accountCost: state.accountCost,
             accountBalance: state.accountBalance,
+            currentStrategy: state.currentStrategy,
             optionPositions: state.strategies.A,
             strategyB: { positions: state.strategies.B }
         });
@@ -965,6 +958,7 @@ function autoSave() {
             hedgeRatio: state.hedgeRatio,
             accountCost: state.accountCost,
             accountBalance: state.accountBalance,
+            currentStrategy: state.currentStrategy,
             optionPositions: state.strategies.A,
             strategyB: { positions: state.strategies.B }
         });
