@@ -683,13 +683,14 @@ function updatePnLTable() {
         const totalPnL = etfPnL + pnlA + accountPnL;
         const change = prices[i] - state.tseIndex;
 
+
         // 計算 ETF 每 100 點差異
-        // 公式：100點 / 當前指數 = 大盤漲跌% → ETF 漲跌 = 2x 大盤%
+        // 公式：100點 / 該指數水平 = 大盤漲跌% → ETF 漲跌 = 2x 大盤%
         // ETF 損益 = 市值 × ETF漲跌%
         let etfDelta = '--';
-        if (state.etfLots > 0 && state.tseIndex > 0) {
-            // 每 100 點對大盤的百分比
-            const indexPct = 100 / state.tseIndex;
+        if (state.etfLots > 0 && prices[i] > 0) {
+            // 每 100 點對該指數水平的百分比（指數越高，100點百分比越小）
+            const indexPct = 100 / prices[i];
             // 00631L 是 2 倍槓桿
             const etfPct = indexPct * 2;
             // 市值
