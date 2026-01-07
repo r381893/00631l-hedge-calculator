@@ -20,20 +20,20 @@ const CONSTANTS = {
  */
 function calcPositionPnL(position, settlementPrice) {
     const { strike, lots, premium = 0, product = '台指', type, direction } = position;
-    
+
     // 判斷是否為期貨
     const isFutures = product === '微台期貨' || type === 'Futures';
-    
+
     if (isFutures) {
         // 微台期貨損益計算（做空）
         // 做空損益 = (進場價 - 結算價) × 口數 × 10元
         return (strike - settlementPrice) * lots * CONSTANTS.MICRO_OPTION_MULTIPLIER;
     } else {
         // 選擇權損益計算
-        const multiplier = product === '微台' 
-            ? CONSTANTS.MICRO_OPTION_MULTIPLIER 
+        const multiplier = product === '微台'
+            ? CONSTANTS.MICRO_OPTION_MULTIPLIER
             : CONSTANTS.OPTION_MULTIPLIER;
-        
+
         // 計算內含價值
         let intrinsic = 0;
         if (type === 'Call') {
@@ -41,7 +41,7 @@ function calcPositionPnL(position, settlementPrice) {
         } else { // Put
             intrinsic = Math.max(0, strike - settlementPrice);
         }
-        
+
         // 計算損益 = (內含價值 - 權利金) × 口數 × 乘數
         if (direction === '買進') {
             return (intrinsic - premium) * lots * multiplier;
@@ -64,16 +64,16 @@ function calcETFPnL(indexPrice, baseIndex, etfLots, etfCost, etfCurrent) {
     if (etfLots <= 0 || baseIndex <= 0) {
         return 0;
     }
-    
-    // 指數變動比例
-    const indexChangePct = (indexPrice - baseIndex) / baseIndex;
-    
-    // 00631L 是 2 倍槓桿，價格變動 = 指數變動 × 2
-    const etfPriceChangePct = indexChangePct * CONSTANTS.LEVERAGE_00631L;
-    
-    // 新的 ETF 價格
-    const newETFPrice = etfCurrent * (1 + etfPriceChangePct);
-    
+
+
+    // 使用複利模型 (Power Law) 計算槓桿效應
+    // P_new = P_current * (Index_new / Index_base) ^ Leverage
+    // 這能反映出隨價格上漲，曝險增加 (Gamma) 的特性，使 Delta 隨指數變化
+    const indexRatio = indexPrice / baseIndex;
+    const powerRatio = Math.pow(indexRatio, CONSTANTS.LEVERAGE_00631L);
+
+    const newETFPrice = etfCurrent * powerRatio;
+
     // 計算損益 = (新價格 - 成本) × 股數
     const shares = etfLots * CONSTANTS.ETF_SHARES_PER_LOT;
     return (newETFPrice - etfCost) * shares;
@@ -85,7 +85,7 @@ function calcETFPnL(indexPrice, baseIndex, etfLots, etfCost, etfCurrent) {
  * @returns {Object} 包含各價位損益陣列的物件
  */
 function calculatePnLCurve(params) {
-    const { 
+    const {
         centerPrice,    // 當前指數
         priceRange,     // 模擬範圍
         etfLots,        // ETF 張數
@@ -93,21 +93,21 @@ function calculatePnLCurve(params) {
         etfCurrent,     // ETF 現價
         positions       // 選擇權/期貨倉位陣列
     } = params;
-    
+
     const prices = [];
     const etfProfits = [];
     const optionProfits = [];
     const combinedProfits = [];
-    
+
     // 產生價格範圍
     for (let offset = -priceRange; offset <= priceRange; offset += CONSTANTS.PRICE_STEP) {
         const price = centerPrice + offset;
         prices.push(price);
-        
+
         // ETF 損益
         const etfPnL = calcETFPnL(price, centerPrice, etfLots, etfCost, etfCurrent);
         etfProfits.push(etfPnL);
-        
+
         // 倉位組合損益
         let optPnL = 0;
         for (const pos of positions) {
@@ -116,11 +116,11 @@ function calculatePnLCurve(params) {
             }
         }
         optionProfits.push(optPnL);
-        
+
         // 總損益
         combinedProfits.push(etfPnL + optPnL);
     }
-    
+
     return {
         prices,
         etfProfits,
@@ -137,25 +137,25 @@ function calculatePnLCurve(params) {
 function calculatePremiumSummary(positions) {
     let totalPremiumIn = 0;   // 收入（賣出）
     let totalPremiumOut = 0;  // 支出（買進）
-    
+
     for (const pos of positions) {
         if (pos.type === 'Futures' || pos.product === '微台期貨') {
             continue; // 期貨沒有權利金
         }
-        
-        const multiplier = pos.product === '微台' 
-            ? CONSTANTS.MICRO_OPTION_MULTIPLIER 
+
+        const multiplier = pos.product === '微台'
+            ? CONSTANTS.MICRO_OPTION_MULTIPLIER
             : CONSTANTS.OPTION_MULTIPLIER;
-        
+
         const premiumValue = pos.premium * pos.lots * multiplier;
-        
+
         if (pos.direction === '賣出') {
             totalPremiumIn += premiumValue;
         } else {
             totalPremiumOut += premiumValue;
         }
     }
-    
+
     return {
         premiumIn: totalPremiumIn,
         premiumOut: totalPremiumOut,
@@ -170,17 +170,17 @@ function calculatePremiumSummary(positions) {
  */
 function calculateETFSummary(params) {
     const { etfLots, etfCost, etfCurrent } = params;
-    
+
     if (etfLots <= 0) {
         return null;
     }
-    
+
     const shares = etfLots * CONSTANTS.ETF_SHARES_PER_LOT;
     const marketValue = shares * etfCurrent;
     const costValue = shares * etfCost;
     const unrealizedPnL = marketValue - costValue;
     const pnlPercent = costValue > 0 ? (unrealizedPnL / costValue) * 100 : 0;
-    
+
     return {
         lots: etfLots,
         shares,
@@ -200,7 +200,7 @@ function calculateETFSummary(params) {
  */
 function compareStrategies(strategyA, strategyB, commonParams) {
     const { centerPrice, priceRange, etfLots, etfCost, etfCurrent } = commonParams;
-    
+
     // 計算策略 A 損益曲線
     const resultA = calculatePnLCurve({
         centerPrice,
@@ -210,7 +210,7 @@ function compareStrategies(strategyA, strategyB, commonParams) {
         etfCurrent,
         positions: strategyA.positions
     });
-    
+
     // 計算策略 B 損益曲線
     const resultB = calculatePnLCurve({
         centerPrice,
@@ -220,7 +220,7 @@ function compareStrategies(strategyA, strategyB, commonParams) {
         etfCurrent,
         positions: strategyB.positions
     });
-    
+
     // 計算各策略的關鍵指標
     const analyzeStrategy = (result) => {
         const profits = result.combinedProfits;
@@ -231,7 +231,7 @@ function compareStrategies(strategyA, strategyB, commonParams) {
             profitAtCurrent: profits[Math.floor(profits.length / 2)]
         };
     };
-    
+
     return {
         strategyA: {
             ...resultA,
@@ -252,11 +252,11 @@ function compareStrategies(strategyA, strategyB, commonParams) {
  */
 function findBreakeven(prices, profits) {
     const breakevens = [];
-    
+
     for (let i = 1; i < profits.length; i++) {
         const prev = profits[i - 1];
         const curr = profits[i];
-        
+
         // 檢查是否跨越零點
         if ((prev <= 0 && curr >= 0) || (prev >= 0 && curr <= 0)) {
             // 線性內插找出確切的兩平點
@@ -265,7 +265,7 @@ function findBreakeven(prices, profits) {
             breakevens.push(Math.round(breakeven));
         }
     }
-    
+
     return breakevens;
 }
 
@@ -275,7 +275,7 @@ function findBreakeven(prices, profits) {
  * @returns {Array} 推薦策略列表
  */
 function recommendStrategies(params) {
-    const { 
+    const {
         etfLots,
         etfCost,
         etfCurrent,
@@ -283,21 +283,21 @@ function recommendStrategies(params) {
         currentIndex,
         optionData // Yahoo 選擇權資料
     } = params;
-    
+
     if (!optionData || optionData.length === 0) {
         return [];
     }
-    
+
     const recommendations = [];
     const suggestedLots = Math.round(etfLots * hedgeRatio);
-    
+
     // 1. 保護性賣權 (Protective Put)
     // 找出價外賣權（履約價略低於現價）
     const puts = optionData.filter(opt => opt.type === 'Put' && opt.strike < currentIndex);
     const protectivePuts = puts
         .sort((a, b) => b.strike - a.strike)
         .slice(0, 3);
-    
+
     if (protectivePuts.length > 0) {
         recommendations.push({
             name: '保護性賣權 (Protective Put)',
@@ -314,12 +314,12 @@ function recommendStrategies(params) {
             benefit: '完全保護下檔，保留上漲獲利'
         });
     }
-    
+
     // 2. 領口策略 (Collar)
     // 買賣權 + 賣買權
     const calls = optionData.filter(opt => opt.type === 'Call' && opt.strike > currentIndex);
     const otmCalls = calls.sort((a, b) => a.strike - b.strike).slice(0, 3);
-    
+
     if (protectivePuts.length > 0 && otmCalls.length > 0) {
         recommendations.push({
             name: '領口策略 (Collar)',
@@ -346,7 +346,7 @@ function recommendStrategies(params) {
             benefit: '低成本或零成本避險'
         });
     }
-    
+
     // 3. 賣權價差 (Put Spread)
     if (puts.length >= 2) {
         const sortedPuts = puts.sort((a, b) => b.strike - a.strike);
@@ -375,7 +375,7 @@ function recommendStrategies(params) {
             benefit: '成本較低的避險方式'
         });
     }
-    
+
     return recommendations;
 }
 
@@ -387,29 +387,29 @@ function recommendStrategies(params) {
 function parseYahooOptionCSV(csvText) {
     const lines = csvText.trim().split('\n');
     if (lines.length < 2) return [];
-    
+
     const options = [];
-    
+
     // 跳過標題行
     for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',');
         if (cols.length < 5) continue;
-        
+
         // 假設格式：履約價, 類型(C/P), 買價, 賣價, 成交價
         const strike = parseFloat(cols[0]);
         const type = cols[1].toUpperCase().includes('C') ? 'Call' : 'Put';
         const bid = parseFloat(cols[2]) || 0;
         const ask = parseFloat(cols[3]) || 0;
         const last = parseFloat(cols[4]) || 0;
-        
+
         // 使用中間價或最後成交價
         const premium = last > 0 ? last : (bid + ask) / 2;
-        
+
         if (!isNaN(strike) && premium > 0) {
             options.push({ strike, type, premium, bid, ask, last });
         }
     }
-    
+
     return options;
 }
 
