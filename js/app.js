@@ -281,60 +281,84 @@ async function initApp() {
  * 抓取市場即時價格（使用多個 CORS proxy 備援）
  */
 async function fetchMarketPrices() {
-    // 多個 CORS proxy 備援
+    // 多個 CORS proxy 備援（更新為更可靠的服務）
     const corsProxies = [
+        'https://corsproxy.io/?url=',
         'https://api.allorigins.win/raw?url=',
-        'https://corsproxy.io/?',
-        'https://cors-anywhere.herokuapp.com/'
+        'https://api.codetabs.com/v1/proxy?quest='
     ];
 
-    let proxyUrl = corsProxies[0];
+    let successfulProxy = null;
+    let tseSuccess = false;
+    let etfSuccess = false;
 
     // 嘗試抓取加權指數
     for (const proxy of corsProxies) {
         try {
             const tseUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=5d');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
             const tseRes = await fetch(proxy + tseUrl, {
                 headers: { 'Accept': 'application/json' },
-                timeout: 5000
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
             if (tseRes.ok) {
                 const tseData = await tseRes.json();
                 const tsePrice = tseData?.chart?.result?.[0]?.meta?.regularMarketPrice;
                 if (tsePrice && tsePrice > 1000) {
-                    state.tseIndex = tsePrice;
-                    proxyUrl = proxy; // 記住可用的 proxy
-                    console.log('加權指數抓取成功:', tsePrice);
+                    state.tseIndex = Math.round(tsePrice * 100) / 100;
+                    successfulProxy = proxy;
+                    tseSuccess = true;
+                    console.log('✅ 加權指數抓取成功:', state.tseIndex, '使用:', proxy);
                     break;
                 }
             }
         } catch (e) {
-            console.warn(`CORS proxy ${proxy} 失敗:`, e.message);
+            console.warn(`❌ CORS proxy ${proxy} 失敗:`, e.message);
         }
     }
 
-    // 抓取 00631L
-    try {
-        const etfUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/00631L.TW?interval=1d&range=5d');
-        const etfRes = await fetch(proxyUrl + etfUrl, {
-            headers: { 'Accept': 'application/json' }
-        });
-        if (etfRes.ok) {
-            const etfData = await etfRes.json();
-            const etfPrice = etfData?.chart?.result?.[0]?.meta?.regularMarketPrice;
-            if (etfPrice && etfPrice > 0) {
-                state.etfCurrentPrice = etfPrice;
-                console.log('00631L 抓取成功:', etfPrice);
+    // 抓取 00631L（使用成功的 proxy 或重試所有）
+    const proxiesToTry = successfulProxy ? [successfulProxy, ...corsProxies.filter(p => p !== successfulProxy)] : corsProxies;
+
+    for (const proxy of proxiesToTry) {
+        try {
+            const etfUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/00631L.TW?interval=1d&range=5d');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            const etfRes = await fetch(proxy + etfUrl, {
+                headers: { 'Accept': 'application/json' },
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (etfRes.ok) {
+                const etfData = await etfRes.json();
+                const etfPrice = etfData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+                if (etfPrice && etfPrice > 0) {
+                    state.etfCurrentPrice = Math.round(etfPrice * 100) / 100;
+                    etfSuccess = true;
+                    console.log('✅ 00631L 抓取成功:', state.etfCurrentPrice);
+                    break;
+                }
             }
+        } catch (e) {
+            console.warn(`❌ 無法抓取 00631L (${proxy}):`, e.message);
         }
-    } catch (e) {
-        console.warn('無法抓取 00631L:', e);
     }
 
-    // 如果 API 都失敗，顯示提示讓用戶手動輸入
-    if (state.tseIndex === 23000 || state.etfCurrentPrice === 100) {
-        console.log('API 抓取不完整，請手動輸入即時價格');
+    // 顯示結果
+    if (tseSuccess && etfSuccess) {
+        showToast('success', `報價更新成功：加權 ${state.tseIndex.toLocaleString()} / 00631L ${state.etfCurrentPrice}`);
+    } else if (!tseSuccess && !etfSuccess) {
+        console.log('API 抓取失敗，請手動輸入即時價格');
         showToast('warning', '無法自動抓取報價，請手動輸入');
+    } else {
+        showToast('info', `部分報價更新：${tseSuccess ? '加權 ' + state.tseIndex.toLocaleString() : '加權失敗'} / ${etfSuccess ? '00631L ' + state.etfCurrentPrice : '00631L失敗'}`);
     }
 }
 
