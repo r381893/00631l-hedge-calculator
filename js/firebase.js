@@ -139,16 +139,26 @@ async function saveData(data) {
  */
 async function loadData() {
     // 先嘗試從 Firebase 載入
-    if (database && isConnected) {
+    // 修改：不等待 isConnected 狀態，直接嘗試讀取（Firebase SDK 會處理連線狀態）
+    if (database) {
         try {
             const userId = getUserId();
-            const snapshot = await database.ref(`users/${userId}/positions`).get();
+            // 設定 3 秒超時，避免網路不通時卡住
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Firebase 讀取超時')), 3000)
+            );
+
+            const dbPromise = database.ref(`users/${userId}/positions`).get();
+
+            const snapshot = await Promise.race([dbPromise, timeoutPromise]);
+
             if (snapshot.exists()) {
                 console.log('從 Firebase 載入資料');
                 return snapshot.val();
             }
         } catch (error) {
             console.error('Firebase 載入失敗:', error);
+            // 如果 Firebase 失敗，會繼續往下執行本地載入
         }
     }
 
