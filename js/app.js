@@ -25,6 +25,13 @@ const state = {
     currentStrategy: 'A',
     optionPositions: strategies.A, // 動態指向當前策略的倉位
 
+    // UI Cache
+    lastRenderedStrikeCenter: null,
+
+    // 複試單分組
+    nextGroupId: 1,
+    selectedPositions: new Set(), // 儲存格式: "Strategy-Index" (e.g., "A-0")
+
     isLoading: true
 };
 
@@ -110,6 +117,7 @@ function cacheElements() {
 
     // Strategy Controls
     elements.btnCopyStrategy = document.getElementById('btn-copy-strategy');
+    elements.btnGroupPositions = document.getElementById('btn-group-positions');
     elements.btnClearStrategy = document.getElementById('btn-clear-strategy');
     elements.btnAddToA = document.getElementById('btn-add-to-a');
     elements.btnAddToB = document.getElementById('btn-add-to-b');
@@ -173,6 +181,7 @@ function bindEvents() {
     elements.btnAddFutures?.addEventListener('click', handleAddFutures);
 
     // Strategy Controls
+    elements.btnGroupPositions?.addEventListener('click', handleGroupPositions);
     elements.btnCopyStrategy?.addEventListener('click', handleCopyStrategy);
     elements.btnClearStrategy?.addEventListener('click', handleClearStrategy);
     elements.btnAddToA?.addEventListener('click', () => handleAddToStrategyClick('A'));
@@ -365,6 +374,9 @@ function updateUI() {
     updatePositionsList();
     updatePremiumSummary();
     updatePnLTable();
+
+    // 更新履約價選擇器 (僅當中心點改變時才會重繪)
+    renderStrikePicker();
 }
 
 /**
@@ -470,26 +482,55 @@ function renderStrikePicker() {
     if (!elements.strikePickerGrid) return;
 
     const centerStrike = Math.round(state.tseIndex / 100) * 100;
+
+    // 避免重複渲染相同的中心點
+    if (state.lastRenderedStrikeCenter === centerStrike) return;
+    state.lastRenderedStrikeCenter = centerStrike;
+
     const strikes = [];
 
-    // 產生 ±500 點範圍的履約價（每 50 點一個）
-    for (let s = centerStrike - 500; s <= centerStrike + 500; s += 50) {
+    // 產生 ±1000 點範圍的履約價（每 100 點一個）
+    // 使用者要求：大盤是30000就是正負大概1000點的點位，排列可以在修正讓使用者更清楚
+    for (let s = centerStrike - 1000; s <= centerStrike + 1000; s += 100) {
         strikes.push(s);
     }
 
-    elements.strikePickerGrid.innerHTML = strikes.map(strike => {
+    // 產生 T 字報價表 HTML
+    let html = `
+        <div class="chain-header">
+            <span class="chain-col-call">Call (買權)</span>
+            <span class="chain-col-strike">履約價</span>
+            <span class="chain-col-put">Put (賣權)</span>
+        </div>
+        <div class="chain-body">
+    `;
+
+    html += strikes.map(strike => {
         const isAtm = strike === centerStrike;
         return `
-            <div class="strike-picker-item ${isAtm ? 'atm' : ''}">
-                <button class="strike-picker-btn call" data-strike="${strike}" data-type="Call">C</button>
-                <span class="strike-picker-price">${strike}</span>
-                <button class="strike-picker-btn put" data-strike="${strike}" data-type="Put">P</button>
+            <div class="chain-row ${isAtm ? 'atm' : ''}">
+                <div class="chain-cell call-cell">
+                    <button class="chain-btn cell-btn sell" data-strike="${strike}" data-type="Call" data-direction="賣出">賣</button>
+                    <button class="chain-btn cell-btn buy" data-strike="${strike}" data-type="Call" data-direction="買進">買</button>
+                </div>
+                <div class="chain-cell strike-cell">
+                    <span class="chain-strike">${strike}</span>
+                </div>
+                <div class="chain-cell put-cell">
+                    <button class="chain-btn cell-btn buy" data-strike="${strike}" data-type="Put" data-direction="買進">買</button>
+                    <button class="chain-btn cell-btn sell" data-strike="${strike}" data-type="Put" data-direction="賣出">賣</button>
+                </div>
             </div>
         `;
     }).join('');
 
+    html += '</div>';
+
+    elements.strikePickerGrid.innerHTML = html;
+    elements.strikePickerGrid.className = 'option-chain-container'; // 切換 class 以套用新樣式
+
     // 綁定事件
-    elements.strikePickerGrid.querySelectorAll('.strike-picker-btn').forEach(btn => {
+    elements.strikePickerGrid.querySelectorAll('.chain-btn').forEach(btn => {
         btn.addEventListener('click', handleStrikePickerClick);
     });
 }
@@ -500,15 +541,22 @@ function renderStrikePicker() {
 function handleStrikePickerClick(e) {
     const strike = parseInt(e.target.dataset.strike);
     const type = e.target.dataset.type;
+    const direction = e.target.dataset.direction;
 
     // 填入表單
     elements.optType.value = type;
     elements.optStrike.value = strike;
 
+    // 設定買賣方向
+    if (direction) {
+        const radio = document.querySelector(`input[name="opt-direction"][value="${direction}"]`);
+        if (radio) radio.checked = true;
+    }
+
     // 捲動到表單
     elements.optPremium?.focus();
 
-    showToast('info', `已選擇 ${strike} ${type === 'Call' ? '買權' : '賣權'}，請輸入權利金`);
+    showToast('info', `已選擇 ${direction || ''} ${strike} ${type === 'Call' ? '買權' : '賣權'}，請輸入權利金`);
 }
 
 /**
@@ -550,10 +598,20 @@ function createPositionItem(pos, index, strategy = 'A') {
     const div = document.createElement('div');
     div.className = 'position-item';
 
+    // 處理群組樣式
+    if (pos.groupId) {
+        div.classList.add(`group-color-${pos.groupId % 5}`); // 循環使用 5 種群組顏色
+        div.dataset.groupId = pos.groupId;
+    }
+
     const isFutures = pos.product === '微台期貨' || pos.type === 'Futures';
+    const isSelected = state.selectedPositions.has(`${strategy}-${index}`);
 
     let tagsHTML = '';
     let detailsHTML = '';
+
+    // 群組標記
+    const groupBadge = pos.groupId ? `<span class="group-badge">#${pos.groupId}</span>` : '';
 
     if (isFutures) {
         tagsHTML = `
@@ -574,11 +632,6 @@ function createPositionItem(pos, index, strategy = 'A') {
         const typeLabel = pos.type === 'Call' ? '買權' : '賣權';
         const dirClass = pos.direction === '買進' ? 'tag-buy' : 'tag-sell';
 
-        const multiplier = Calculator.CONSTANTS.OPTION_MULTIPLIER;
-        const premiumValue = pos.premium * pos.lots * multiplier;
-        const premiumClass = pos.direction === '賣出' ? 'profit' : 'loss';
-        const premiumSign = pos.direction === '賣出' ? '+' : '-';
-
         tagsHTML = `
             <span class="position-tag ${dirClass}">${pos.direction}</span>
             <span class="position-tag ${typeClass}">${typeLabel}</span>
@@ -595,6 +648,10 @@ function createPositionItem(pos, index, strategy = 'A') {
     }
 
     div.innerHTML = `
+        <div class="position-select">
+            <input type="checkbox" class="pos-select-check" data-index="${index}" data-strategy="${strategy}" ${isSelected ? 'checked' : ''}>
+        </div>
+        ${groupBadge}
         <div class="position-info">
             ${tagsHTML}
             ${detailsHTML}
@@ -603,6 +660,9 @@ function createPositionItem(pos, index, strategy = 'A') {
             <button class="position-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">🗑️</button>
         </div>
     `;
+
+    // 綁定選取框事件
+    div.querySelector('.pos-select-check').addEventListener('change', handlePositionSelect);
 
     // 綁定刪除按鈕事件
     div.querySelectorAll('.position-btn').forEach(btn => {
@@ -880,6 +940,61 @@ function handleLotsStepper(e) {
             updateChart();
             autoSave();
         }
+    }
+}
+
+/**
+ * 處理倉位選取勾選
+ */
+function handlePositionSelect(e) {
+    const index = e.target.dataset.index;
+    const strategy = e.target.dataset.strategy;
+    const key = `${strategy}-${index}`;
+
+    if (e.target.checked) {
+        state.selectedPositions.add(key);
+    } else {
+        state.selectedPositions.delete(key);
+    }
+
+    // 更新群組按鈕狀態 (如果有的話)
+    updateGroupButtonState();
+}
+
+/**
+ * 處理建立群組
+ */
+function handleGroupPositions() {
+    if (state.selectedPositions.size < 2) {
+        showToast('warning', '請至少選擇 2 筆倉位建立群組');
+        return;
+    }
+
+    const groupId = state.nextGroupId++;
+
+    state.selectedPositions.forEach(key => {
+        const [strat, idx] = key.split('-');
+        if (state.strategies[strat] && state.strategies[strat][idx]) {
+            state.strategies[strat][idx].groupId = groupId;
+        }
+    });
+
+    state.selectedPositions.clear();
+    updateUI();
+    autoSave();
+    showToast('success', `已建立群組 #${groupId}`);
+}
+
+/**
+ * 更新群組按鈕狀態
+ */
+function updateGroupButtonState() {
+    const btnGroup = document.getElementById('btn-group-positions');
+    if (btnGroup) {
+        btnGroup.disabled = state.selectedPositions.size < 2;
+        btnGroup.innerHTML = state.selectedPositions.size >= 2
+            ? `🔗 建立群組 (${state.selectedPositions.size})`
+            : `🔗 建立群組`;
     }
 }
 
@@ -1310,7 +1425,11 @@ function handleApplyParsed() {
 
     // 套用選擇權
     if (parsedInventory.options.length > 0) {
-        state.optionPositions = [...state.optionPositions, ...parsedInventory.options];
+        const currentStrat = state.currentStrategy;
+        // 將新倉位加入目前的策略陣列
+        state.strategies[currentStrat] = [...state.strategies[currentStrat], ...parsedInventory.options];
+        // 更新指標
+        state.optionPositions = state.strategies[currentStrat];
     }
 
     updateUI();

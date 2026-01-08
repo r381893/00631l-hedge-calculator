@@ -761,6 +761,57 @@ a:hover {
     color: var(--accent-light);
 }
 
+
+/* Grouping Styles */
+.position-select {
+    margin-right: 12px;
+}
+
+.pos-select-check {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+
+.group-badge {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* Group Colors - Cycle 5 colors */
+.group-color-1 {
+    border-left: 4px solid #fbbf24;
+}
+
+/* Amber */
+.group-color-0 {
+    border-left: 4px solid #a78bfa;
+}
+
+/* Purple (Using 0 for 5%5) */
+.group-color-2 {
+    border-left: 4px solid #34d399;
+}
+
+/* Emerald */
+.group-color-3 {
+    border-left: 4px solid #f472b6;
+}
+
+/* Pink */
+.group-color-4 {
+    border-left: 4px solid #60a5fa;
+}
+
+/* Blue */
+
 .position-lots-stepper {
     display: inline-flex;
     align-items: center;
@@ -1411,7 +1462,7 @@ a:hover {
 }
 
 .parsed-item {
-    display: flex;
+
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
@@ -1806,7 +1857,131 @@ a:hover {
     color: white;
 }
 
+
 .strike-picker-btn.put:hover {
     background: var(--danger-light);
     transform: scale(1.1);
+}
+
+/* ======== Option Chain T-Shape Layout ======== */
+.option-chain-container {
+    display: flex;
+    flex-direction: column;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.chain-header {
+    display: grid;
+    grid-template-columns: 1fr 100px 1fr;
+    padding: 10px;
+    background: var(--bg-card);
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.chain-col-call {
+    color: var(--danger-light);
+}
+
+.chain-col-put {
+    color: var(--success-light);
+}
+
+.chain-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.chain-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 1fr;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+.chain-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.chain-row.atm {
+    background: rgba(251, 191, 36, 0.1);
+    /* Amber tint for ATM */
+    border-top: 1px solid var(--accent);
+    border-bottom: 1px solid var(--accent);
+}
+
+.chain-cell {
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* Gap between buttons */
+}
+
+.strike-cell {
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    gap: 0;
+}
+
+.chain-strike {
+    font-weight: 700;
+    font-family: monospace;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.cell-btn {
+    padding: 2px 0;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex: 1;
+    /* Equal width */
+    text-align: center;
+    min-width: 32px;
+}
+
+/* Specific styles for Buy/Sell based on Column context (Call vs Put) */
+/* Call Column: Sell (Left), Buy (Right) */
+/* Put Column: Buy (Left), Sell (Right) */
+
+/* Buy Button Style (Generic) */
+.cell-btn.buy {
+    background: rgba(239, 68, 68, 0.15);
+    /* Red tint */
+    color: var(--danger-light);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.cell-btn.buy:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* Sell Button Style (Generic) */
+.cell-btn.sell {
+    background: rgba(34, 197, 94, 0.15);
+    /* Green tint */
+    color: var(--success-light);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.cell-btn.sell:hover {
+    background: var(--success);
+    color: white;
 }
