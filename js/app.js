@@ -1014,7 +1014,7 @@ async function handleReload() {
 
 async function handleSave() {
     try {
-        await FirebaseModule.saveData({
+        const success = await FirebaseModule.saveData({
             etfLots: state.etfLots,
             etfCost: state.etfCost,
             etfCurrentPrice: state.etfCurrentPrice,
@@ -1025,8 +1025,16 @@ async function handleSave() {
             optionPositions: state.strategies.A,
             strategyB: { positions: state.strategies.B }
         });
-        showToast('success', '資料已儲存');
+
+        if (success) {
+            updateSaveStatus(true);
+            showToast('success', '資料已同步到雲端');
+        } else {
+            updateSaveStatus(false, '📂 僅儲存於本地');
+            showToast('warning', '已儲存於本地 (雲端同步失敗)');
+        }
     } catch (error) {
+        updateSaveStatus(false, '❌ 儲存失敗');
         showToast('error', '儲存失敗: ' + error.message);
     }
 }
@@ -1118,20 +1126,53 @@ function handleCompare() {
  */
 let saveTimeout = null;
 function autoSave() {
+    updateSaveStatus(false, '儲存中...');
+
     if (saveTimeout) clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
-        await FirebaseModule.saveData({
-            etfLots: state.etfLots,
-            etfCost: state.etfCost,
-            etfCurrentPrice: state.etfCurrentPrice,
-            hedgeRatio: state.hedgeRatio,
-            accountCost: state.accountCost,
-            accountBalance: state.accountBalance,
-            currentStrategy: state.currentStrategy,
-            optionPositions: state.strategies.A,
-            strategyB: { positions: state.strategies.B }
-        });
+        try {
+            const success = await FirebaseModule.saveData({
+                etfLots: state.etfLots,
+                etfCost: state.etfCost,
+                etfCurrentPrice: state.etfCurrentPrice,
+                hedgeRatio: state.hedgeRatio,
+                accountCost: state.accountCost,
+                accountBalance: state.accountBalance,
+                currentStrategy: state.currentStrategy,
+                optionPositions: state.strategies.A,
+                strategyB: { positions: state.strategies.B }
+            });
+
+            if (success) {
+                updateSaveStatus(true);
+            } else {
+                updateSaveStatus(false, '📂 僅儲存於本地');
+            }
+        } catch (error) {
+            updateSaveStatus(false, '❌ 儲存失敗');
+        }
     }, 1000);
+}
+
+/**
+ * 更新儲存狀態顯示
+ */
+function updateSaveStatus(isSynced, customText = null) {
+    const statusEl = document.getElementById('save-status');
+    if (!statusEl) return;
+
+    if (customText) {
+        statusEl.textContent = customText;
+        return;
+    }
+
+    if (isSynced) {
+        statusEl.textContent = '☁️ 已同步';
+        statusEl.style.color = '#4caf50'; // Green
+    } else {
+        statusEl.textContent = '📂 僅儲存於本地';
+        statusEl.style.color = '#ff9800'; // Orange
+    }
 }
 
 /**
