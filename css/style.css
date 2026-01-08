@@ -627,6 +627,16 @@ a:hover {
     font-weight: 500;
 }
 
+.col-total-a {
+    color: var(--danger-light);
+    border-left: 2px solid rgba(239, 68, 68, 0.1);
+}
+
+.col-total-b {
+    color: var(--accent-light);
+    border-left: 2px solid rgba(59, 130, 246, 0.1);
+}
+
 /* ======== Tabs ======== */
 .tab-group {
     display: flex;

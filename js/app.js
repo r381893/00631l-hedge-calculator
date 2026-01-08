@@ -672,6 +672,12 @@ function updatePnLTable() {
         return `<span class="${cls}">${sign}${val.toLocaleString()}</span>`;
     };
 
+    // 計算固定的「每 100 點損益基礎值」
+    // 公式：股數 × 現價 × 2倍槓桿 × (100 / 指數) 
+    // 這代表指數每移動 100 點，ETF 損益的線性化估算
+    const shares = state.etfLots * Calculator.CONSTANTS.ETF_SHARES_PER_LOT;
+    const delta100Base = shares * state.etfCurrentPrice * Calculator.CONSTANTS.LEVERAGE_00631L * (100 / state.tseIndex);
+
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
 
@@ -679,18 +685,20 @@ function updatePnLTable() {
         const pnlA = Math.round(optProfitsA[i]);
         const pnlB = Math.round(optProfitsB[i]);
         const etfPnL = Math.round(etfProfits[i]);
-        // 總損益 = ETF + 策略A選擇權 + 帳戶損益
-        const totalPnL = etfPnL + pnlA + accountPnL;
+        // 總損益 (A) = ETF + 策略A選擇權 + 帳戶損益
+        const totalPnLA = etfPnL + pnlA + accountPnL;
+        // 總損益 (B) = ETF + 策略B選擇權 + 帳戶損益
+        const totalPnLB = etfPnL + pnlB + accountPnL;
+
         const change = prices[i] - state.tseIndex;
 
-
-        // 計算 ETF 每 100 點差異（與下一行的實際差值）
-        let etfDelta = '--';
-        if (i < prices.length - 1) {
-            const nextEtfPnL = Math.round(etfProfits[i + 1]);
-            const delta = nextEtfPnL - etfPnL;
-            etfDelta = formatPnL(delta);
-        }
+        // 計算 ETF Δ100：每 100 點對應 delta100Base，以此類推
+        // 變動 100 點 = 1 倍 delta100Base
+        // 變動 200 點 = 2 倍 delta100Base
+        // 變動 -100 點 = -1 倍 delta100Base（負值表示虧損）
+        const multiplier = change / 100;
+        const etfDelta100 = Math.round(delta100Base * multiplier);
+        const etfDelta = formatPnL(etfDelta100);
 
         // 高亮價平區域
         if (Math.abs(change) < 50) {
@@ -706,7 +714,8 @@ function updatePnLTable() {
             <td>${formatPnL(etfPnL)}</td>
             <td class="col-etf-delta">${etfDelta}</td>
             <td>${formatPnL(accountPnL)}</td>
-            <td><strong>${formatPnL(totalPnL)}</strong></td>
+            <td class="col-total-a"><strong>${formatPnL(totalPnLA)}</strong></td>
+            <td class="col-total-b"><strong>${formatPnL(totalPnLB)}</strong></td>
         `;
 
         elements.pnlTableBody.appendChild(row);
