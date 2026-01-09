@@ -32,7 +32,8 @@ const DEFAULT_DATA = {
     },
     accountCost: 0,       // 帳戶成本
     accountBalance: 0,    // 目前餘額
-    lastUpdated: null
+    lastUpdated: null,
+    _source: 'default'
 };
 
 /**
@@ -138,44 +139,64 @@ async function saveData(data) {
  * @returns {Promise<Object>} 載入的資料
  */
 async function loadData() {
-    // 先嘗試從 Firebase 載入
-    // 修改：不等待 isConnected 狀態，直接嘗試讀取（Firebase SDK 會處理連線狀態）
-    if (database) {
+    let firebaseData = null;
+    let localData = null;
+
+    // 1. 讀取本地資料
+    const localJson = localStorage.getItem('hedge_positions');
+    if (localJson) {
         try {
-            const userId = getUserId();
-            // 設定 3 秒超時，避免網路不通時卡住
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Firebase 讀取超時')), 3000)
-            );
-
-            const dbPromise = database.ref(`users/${userId}/positions`).get();
-
-            const snapshot = await Promise.race([dbPromise, timeoutPromise]);
-
-            if (snapshot.exists()) {
-                console.log('從 Firebase 載入資料');
-                return snapshot.val();
-            }
-        } catch (error) {
-            console.error('Firebase 載入失敗:', error);
-            // 如果 Firebase 失敗，會繼續往下執行本地載入
-        }
-    }
-
-    // 從本地載入
-    const localData = localStorage.getItem('hedge_positions');
-    if (localData) {
-        try {
-            console.log('從本地儲存載入資料');
-            return JSON.parse(localData);
+            localData = JSON.parse(localJson);
+            // console.log('✅ 讀取到本地資料, 時間:', localData.lastUpdated);
         } catch (error) {
             console.error('本地資料解析失敗:', error);
         }
     }
 
-    // 返回預設資料
-    console.log('使用預設資料');
-    return { ...DEFAULT_DATA };
+    // 2. 嘗試讀取 Firebase 資料 (如果可用)
+    if (database) {
+        try {
+            const userId = getUserId();
+            // 設定 3 秒超時
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Firebase 讀取超時')), 3000)
+            );
+
+            const dbPromise = database.ref(`users/${userId}/positions`).get();
+            const snapshot = await Promise.race([dbPromise, timeoutPromise]);
+
+            if (snapshot.exists()) {
+                firebaseData = snapshot.val();
+                // console.log('✅ 讀取到雲端資料, 時間:', firebaseData.lastUpdated);
+            }
+        } catch (error) {
+            console.warn('⚠️ Firebase 讀取跳過:', error.message);
+        }
+    }
+
+    // 3. 比較資料版本 (以 lastUpdated 為準)
+    if (firebaseData && localData) {
+        const firebaseTime = new Date(firebaseData.lastUpdated || 0).getTime();
+        const localTime = new Date(localData.lastUpdated || 0).getTime();
+
+        if (localTime > firebaseTime) {
+            console.log(`使用較新的本地資料 (${localData.lastUpdated})`);
+            return { ...localData, _source: 'local' };
+        } else {
+            console.log(`使用較新的雲端資料 (${firebaseData.lastUpdated})`);
+            return { ...firebaseData, _source: 'cloud' };
+        }
+    } else if (firebaseData) {
+        console.log('僅有雲端資料，使用雲端版本');
+        return { ...firebaseData, _source: 'cloud' };
+    } else if (localData) {
+        console.log('僅有本地資料，使用本地版本');
+        return { ...localData, _source: 'local' };
+    }
+
+    // 4. 無資料，回傳預設值
+    console.log('無歷史資料，使用預設值');
+    return { ...DEFAULT_DATA, _source: 'default' };
 }
 
 /**

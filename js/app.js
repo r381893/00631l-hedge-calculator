@@ -241,6 +241,13 @@ async function initApp() {
             if (elements.accountCostInput) elements.accountCostInput.value = state.accountCost;
             if (elements.accountBalanceInput) elements.accountBalanceInput.value = state.accountBalance;
             updateAccountPnLDisplay();
+
+            // 顯示資料來源提示
+            if (savedData._source === 'local') {
+                showToast('info', `已載入本地資料 (${new Date(savedData.lastUpdated).toLocaleString()})`);
+            } else if (savedData._source === 'cloud') {
+                showToast('success', `已載入雲端資料 (${new Date(savedData.lastUpdated).toLocaleString()})`);
+            }
         }
 
         // 抓取即時價格
