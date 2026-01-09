@@ -234,7 +234,6 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
             borderColor: '#3b82f6', // 藍色
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             borderWidth: 3,
-            borderDash: [5, 5], // 虛線
             pointRadius: 0,
             pointHoverRadius: 6,
             tension: 0.1,
@@ -251,7 +250,6 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
             borderColor: '#69f0ae', // 綠色
             backgroundColor: 'rgba(105, 240, 174, 0.1)',
             borderWidth: 3,
-            borderDash: [5, 5], // 虛線
             pointRadius: 0,
             pointHoverRadius: 6,
             tension: 0.1,
