@@ -215,6 +215,9 @@ function bindEvents() {
     elements.imageUploadArea?.addEventListener('drop', handleImageDrop);
     elements.btnOcrRecognize?.addEventListener('click', handleOcrRecognize);
     elements.btnClearImage?.addEventListener('click', handleClearImage);
+
+    // AI Analysis
+    bindAIEvents();
 }
 
 /**
@@ -631,6 +634,9 @@ function renderPositionsList(strategy) {
 function createPositionItem(pos, index, strategy = 'A') {
     const div = document.createElement('div');
     div.className = 'position-item';
+    if (pos.isClosed) {
+        div.classList.add('closed');
+    }
 
     // 處理群組樣式
     if (pos.groupId) {
@@ -660,9 +666,9 @@ function createPositionItem(pos, index, strategy = 'A') {
         detailsHTML = `
             <span class="position-strike">進場 ${pos.strike.toLocaleString()}</span>
             <span class="position-lots-stepper">
-                <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}">−</button>
+                <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>−</button>
                 <span class="lots-value">${pos.lots}</span>
-                <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}">+</button>
+                <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>+</button>
                 <span class="lots-unit">口</span>
             </span>
         `;
@@ -678,33 +684,69 @@ function createPositionItem(pos, index, strategy = 'A') {
         detailsHTML = `
             <span class="position-strike">${pos.strike.toLocaleString()}</span>
             <span class="position-lots-stepper">
-                <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}">−</button>
+                <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>−</button>
                 <span class="lots-value">${pos.lots}</span>
-                <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}">+</button>
+                <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>+</button>
             </span>
             <span>@${pos.premium}點</span>
         `;
     }
 
+    // 平倉區塊 HTML
+    let closeHTML = '';
+    if (pos.isClosed) {
+        const realizedPnL = Calculator.calcRealizedPnL(pos, parseFloat(pos.closePrice));
+        const pnlClass = realizedPnL >= 0 ? 'profit' : 'loss';
+        const pnlSign = realizedPnL >= 0 ? '+' : '';
+
+        closeHTML = `
+            <div class="close-info">
+                <div class="close-input-group">
+                    <label>平倉價:</label>
+                    <input type="number" class="close-price-input" 
+                        value="${pos.closePrice || ''}" 
+                        data-index="${index}" 
+                        data-strategy="${strategy}" 
+                        placeholder="價格">
+                </div>
+                <div class="realized-pnl ${pnlClass}">
+                    ${pnlSign}${realizedPnL.toLocaleString()}
+                </div>
+            </div>
+        `;
+    }
+
     div.innerHTML = `
-        <div class="position-select">
-            <input type="checkbox" class="pos-select-check" data-index="${index}" data-strategy="${strategy}" ${isSelected ? 'checked' : ''}>
+        <div class="position-header">
+            <div class="position-left">
+                <div class="position-select">
+                    <input type="checkbox" class="pos-select-check" data-index="${index}" data-strategy="${strategy}" ${isSelected ? 'checked' : ''}>
+                </div>
+                ${groupBadge}
+                <div class="position-info">
+                    ${tagsHTML}
+                    ${detailsHTML}
+                </div>
+            </div>
+            <div class="position-actions">
+                <label class="close-toggle">
+                    <input type="checkbox" class="close-check" 
+                        data-index="${index}" 
+                        data-strategy="${strategy}" 
+                        ${pos.isClosed ? 'checked' : ''}>
+                    <span>平倉</span>
+                </label>
+                <button class="position-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">🗑️</button>
+            </div>
         </div>
-        ${groupBadge}
-        <div class="position-info">
-            ${tagsHTML}
-            ${detailsHTML}
-        </div>
-        <div class="position-actions">
-            <button class="position-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">🗑️</button>
-        </div>
+        ${closeHTML}
     `;
 
     // 綁定選取框事件
     div.querySelector('.pos-select-check').addEventListener('change', handlePositionSelect);
 
     // 綁定刪除按鈕事件
-    div.querySelectorAll('.position-btn').forEach(btn => {
+    div.querySelectorAll('.delete').forEach(btn => {
         btn.addEventListener('click', handlePositionAction);
     });
 
@@ -713,7 +755,64 @@ function createPositionItem(pos, index, strategy = 'A') {
         btn.addEventListener('click', handleLotsStepper);
     });
 
+    // 綁定平倉切換
+    div.querySelector('.close-check').addEventListener('change', handlePositionCloseToggle);
+
+    // 綁定平倉價輸入
+    const closeInput = div.querySelector('.close-price-input');
+    if (closeInput) {
+        closeInput.addEventListener('input', handlePositionClosePrice);
+    }
+
     return div;
+}
+
+/**
+ * 處理平倉狀態切換
+ */
+function handlePositionCloseToggle(e) {
+    const index = parseInt(e.target.dataset.index);
+    const strategy = e.target.dataset.strategy;
+    const isChecked = e.target.checked;
+
+    const positions = state.strategies[strategy];
+    if (positions && positions[index]) {
+        positions[index].isClosed = isChecked;
+        if (isChecked && positions[index].closePrice === undefined) {
+            // 預設平倉價為成本價 (方便修改)
+            positions[index].closePrice = isFutures(positions[index]) ? positions[index].strike : positions[index].premium;
+        }
+
+        saveData(); // 儲存變更
+        updateUI();
+    }
+}
+
+/**
+ * 處理平倉價格輸入
+ */
+function handlePositionClosePrice(e) {
+    const index = parseInt(e.target.dataset.index);
+    const strategy = e.target.dataset.strategy;
+    const price = parseFloat(e.target.value);
+
+    const positions = state.strategies[strategy];
+    if (positions && positions[index]) {
+        positions[index].closePrice = price;
+        updateUI(); // 即時更新損益
+        saveDataDebounced(); // 延遲儲存
+    }
+}
+
+function isFutures(pos) {
+    return pos.product === '微台期貨' || pos.type === 'Futures';
+}
+
+// 防抖動儲存
+let saveTimeout;
+function saveDataDebounced() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveData, 1000);
 }
 
 /**
@@ -1235,7 +1334,7 @@ function handleCompare() {
 /**
  * 自動儲存（防抖）
  */
-let saveTimeout = null;
+// let saveTimeout = null; // Removed duplicate
 function autoSave() {
     updateSaveStatus(false, '儲存中...');
 
@@ -1321,6 +1420,170 @@ let parsedInventory = {
     etf: null,
     options: []
 };
+
+// ======== AI Strategy Analysis ========
+
+/**
+ * 綁定 AI 相關事件
+ */
+function bindAIEvents() {
+    elements.btnAIAnalysis = document.getElementById('btn-ai-analysis');
+    elements.aiResultCard = document.getElementById('ai-result-card');
+    elements.aiResultContent = document.getElementById('ai-result-content');
+    elements.aiLoading = document.getElementById('ai-loading');
+    elements.btnCloseAI = document.getElementById('btn-close-ai');
+    elements.aiApiKeyInput = document.getElementById('ai-api-key');
+
+    // 載入儲存的 API Key
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey && elements.aiApiKeyInput) {
+        elements.aiApiKeyInput.value = savedKey;
+        state.apiKey = savedKey;
+    }
+
+    elements.aiApiKeyInput?.addEventListener('change', (e) => {
+        state.apiKey = e.target.value.trim();
+        localStorage.setItem('gemini_api_key', state.apiKey);
+    });
+
+    elements.btnAIAnalysis?.addEventListener('click', handleAIAnalysis);
+    elements.btnCloseAI?.addEventListener('click', () => {
+        elements.aiResultCard.style.display = 'none';
+    });
+}
+
+/**
+ * 處理 AI 分析請求
+ */
+async function handleAIAnalysis() {
+    if (!state.apiKey) {
+        showToast('error', '請先在側邊欄設定 Google Gemini API Key');
+        // 自動打開側邊欄並聚焦
+        if (window.innerWidth <= 768) elements.sidebar.classList.add('active');
+        elements.aiApiKeyInput?.focus();
+        return;
+    }
+
+    // 顯示載入動畫
+    elements.aiLoading.style.display = 'block';
+    elements.btnAIAnalysis.disabled = true;
+    elements.aiResultCard.style.display = 'none';
+
+    try {
+        const prompt = generateAnalysisPrompt();
+        const response = await callGeminiAPI(prompt, state.apiKey);
+
+        // 渲染結果
+        elements.aiResultContent.innerHTML = renderMarkdown(response);
+        elements.aiResultCard.style.display = 'block';
+
+        // 捲動到結果
+        elements.aiResultCard.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        console.error('AI Analysis Error:', error);
+        showToast('error', 'AI 分析失敗: ' + error.message);
+    } finally {
+        elements.aiLoading.style.display = 'none';
+        elements.btnAIAnalysis.disabled = false;
+    }
+}
+
+/**
+ * 呼叫 Google Gemini API
+ */
+async function callGeminiAPI(prompt, apiKey) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'API request failed');
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+}
+
+/**
+ * 產生分析用的提示詞 (Prompt)
+ */
+function generateAnalysisPrompt() {
+    const currentStrategy = state.strategies[state.currentStrategy];
+
+    // 整理倉位資訊
+    const positionsText = currentStrategy.map(pos => {
+        const type = pos.product === '微台期貨' || pos.type === 'Futures' ? '期貨' : `選擇權 ${pos.type}`;
+        return `- ${type} ${pos.direction} ${pos.strike} @ ${pos.premium || 0} (${pos.lots}口)`;
+    }).join('\n');
+
+    // 取得損益分析數據
+    const summary = Calculator.calculatePnLCurve({
+        centerPrice: state.tseIndex,
+        priceRange: state.priceRange,
+        etfLots: state.etfLots,
+        etfCost: state.etfCost,
+        etfCurrent: state.etfCurrentPrice,
+        positions: currentStrategy
+    });
+
+    // 簡單找出最大虧損點和最大獲利點
+    const maxProfit = Math.max(...summary.combinedProfits);
+    const maxLoss = Math.min(...summary.combinedProfits);
+    const currentPnL = summary.combinedProfits[Math.floor(summary.combinedProfits.length / 2)];
+
+    return `
+你是一位專業的選擇權避險策略顧問。請針對以下投資組合進行風險評估與建議。請用繁體中文回答。
+
+**市場狀況**
+- 加權指數: ${state.tseIndex}
+- 00631L 現價: ${state.etfCurrentPrice}
+
+**持有資產**
+- 00631L (2倍槓桿ETF): ${state.etfLots} 張 (成本 ${state.etfCost})
+
+**選擇權/期貨避險倉位 (策略 ${state.currentStrategy})**
+${positionsText || '(無倉位)'}
+
+**損益模擬數據**
+- 目前預估損益: ${Math.round(currentPnL)} 元
+- 模擬區間最大獲利: ${Math.round(maxProfit)} 元
+- 模擬區間最大虧損: ${Math.round(maxLoss)} 元
+
+**請提供分析報告，包含：**
+1.  **風險評估**: (低/中/高) 請說明主要風險來源（例如：下檔保護不足、上方獲利被鎖死、時間價值流失快等）。
+2.  **避險有效性**: 目前的倉位對於大跌 (-10%) 是否有足夠保護？
+3.  **操作建議**: 針對目前狀況，具體建議如何調整倉位（例如：平倉某部位、加買 Put、或是調整履約價）。請給出具體履約價建議。
+    `;
+}
+
+/**
+ * 簡單的 Markdown 渲染器
+ */
+function renderMarkdown(text) {
+    if (!text) return '';
+
+    // 處理標題
+    let html = text
+        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // 粗體
+        .replace(/\*(.*?)\*/g, '<em>$1</em>') // 斜體
+        .replace(/\n/g, '<br>'); // 換行
+
+    return html;
+}
 
 /**
  * 處理庫存解析

@@ -2136,3 +2136,202 @@ summary.section-title-summary h2 {
     background: var(--success);
     color: white;
 }
+/* Closed Position Styles */
+.position-item.closed {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+}
+
+.position-item.closed .position-select,
+.position-item.closed .position-info,
+.position-item.closed .lots-btn {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.position-item.closed .lots-btn {
+    cursor: not-allowed;
+}
+
+.close-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-right: 12px;
+}
+
+.close-toggle input {
+    accent-color: var(--warning);
+    width: 16px;
+    height: 16px;
+}
+
+.close-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.close-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.close-input-group label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.close-price-input {
+    width: 80px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.5);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+.close-price-input:focus {
+    border-color: var(--warning);
+    outline: none;
+}
+
+.realized-pnl {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.realized-pnl.profit {
+    color: var(--success-light);
+}
+
+.realized-pnl.loss {
+    color: var(--danger-light);
+}
+
+/* AI Analysis Styles */
+.sidebar-section h3.sidebar-title {
+    margin-top: 24px;
+}
+
+.btn-ai-analysis {
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-ai-analysis:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.6);
+    filter: brightness(1.1);
+}
+
+.btn-ai-analysis:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+#ai-loading {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--text-muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#ai-result-card {
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);
+    animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.result-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #e879f9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-close-result {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+}
+
+.btn-close-result:hover {
+    color: var(--text-primary);
+}
+
+.markdown-content {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3 {
+    color: #f1f5f9;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.markdown-content h3 {
+    font-size: 1.05rem;
+    color: #e2e8f0;
+}
+
+.markdown-content strong {
+    color: #f472b6; /* Pink-400 */
+}
+
+.markdown-content em {
+    color: #94a3b8;
+    font-style: italic;
+}

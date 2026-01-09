@@ -80,6 +80,38 @@ function calcETFPnL(indexPrice, baseIndex, etfLots, etfCost, etfCurrent) {
 }
 
 /**
+ * 計算已平倉部位的已實現損益
+ * @param {Object} position - 倉位資料
+ * @param {number} closePrice - 平倉價格
+ * @returns {number} 損益金額（台幣）
+ */
+function calcRealizedPnL(position, closePrice) {
+    if (!closePrice || isNaN(closePrice)) return 0;
+
+    const { strike, lots, premium = 0, product = '台指', type, direction } = position;
+    const isFutures = product === '微台期貨' || type === 'Futures';
+
+    if (isFutures) {
+        // 微台期貨損益計算（做空）
+        // 損益 = (進場價 - 平倉價) × 口數 × 10元
+        return (strike - closePrice) * lots * CONSTANTS.MICRO_OPTION_MULTIPLIER;
+    } else {
+        // 選擇權損益計算
+        const multiplier = product === '微台'
+            ? CONSTANTS.MICRO_OPTION_MULTIPLIER
+            : CONSTANTS.OPTION_MULTIPLIER;
+
+        // 買進: (平倉價 - 權利金) * ...
+        // 賣出: (權利金 - 平倉價) * ...
+        if (direction === '買進') {
+            return (closePrice - premium) * lots * multiplier;
+        } else { // 賣出
+            return (premium - closePrice) * lots * multiplier;
+        }
+    }
+}
+
+/**
  * 計算整個策略組合在價格範圍內的損益
  * @param {Object} params - 計算參數
  * @returns {Object} 包含各價位損益陣列的物件
@@ -111,7 +143,12 @@ function calculatePnLCurve(params) {
         // 倉位組合損益
         let optPnL = 0;
         for (const pos of positions) {
-            if (pos.lots > 0) {
+            // 如果已平倉，加總已實現損益 (對所有模擬價格皆為常數)
+            if (pos.isClosed && pos.closePrice !== undefined) {
+                optPnL += calcRealizedPnL(pos, pos.closePrice);
+            }
+            // 未平倉且有口數，計算模擬損益
+            else if (pos.lots > 0) {
                 optPnL += calcPositionPnL(pos, price);
             }
         }
@@ -417,6 +454,7 @@ function parseYahooOptionCSV(csvText) {
 window.Calculator = {
     CONSTANTS,
     calcPositionPnL,
+    calcRealizedPnL,
     calcETFPnL,
     calculatePnLCurve,
     calculatePremiumSummary,
