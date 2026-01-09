@@ -228,6 +228,11 @@ async function initApp() {
         // 初始化 Firebase
         FirebaseModule.initFirebase();
 
+        // 設定版本時間 (Static Build Time)
+        if (elements.updateTime) {
+            elements.updateTime.textContent = '2026-01-10 07:44';
+        }
+
         // 載入資料
         const savedData = await FirebaseModule.loadData();
         if (savedData) {

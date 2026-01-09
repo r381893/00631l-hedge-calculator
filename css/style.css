@@ -206,6 +206,15 @@ a:hover {
     overflow-y: auto;
     transition: transform var(--transition-normal);
     z-index: 900;
+    padding: 16px;
+    /* Ensure content isn't flush against edges */
+}
+
+/* Sidebar Inputs - Force full width */
+.sidebar .form-group input {
+    width: 100%;
+    box-sizing: border-box;
+    /* Ensure padding doesn't overflow */
 }
 
 .sidebar-toggle {
@@ -398,6 +407,8 @@ a:hover {
     max-width: 1400px;
     /* Constrain width on large screens */
     width: 100%;
+    margin-right: auto;
+    /* Center the content area if it hits max-width */
 }
 
 /* ======== Cards ======== */
