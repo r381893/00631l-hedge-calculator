@@ -741,11 +741,21 @@ function updatePnLTable() {
         etfCurrent: state.etfCurrentPrice,
         positions: state.strategies.B
     });
+    // 計算策略 C
+    const resultC = Calculator.calculatePnLCurve({
+        centerPrice: state.tseIndex,
+        priceRange: state.priceRange,
+        etfLots: state.etfLots,
+        etfCost: state.etfCost,
+        etfCurrent: state.etfCurrentPrice,
+        positions: state.strategies.C || []
+    });
 
     elements.pnlTableBody.innerHTML = '';
 
     const { prices, etfProfits, optionProfits: optProfitsA } = resultA;
     const { optionProfits: optProfitsB } = resultB;
+    const { optionProfits: optProfitsC } = resultC;
     const accountPnL = getAccountPnL();
 
     const formatPnL = (val) => {
@@ -763,14 +773,15 @@ function updatePnLTable() {
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
 
-        // 策略 A/B 只計算選擇權損益
+        // 策略 A/B/C 只計算選擇權損益
         const pnlA = Math.round(optProfitsA[i]);
         const pnlB = Math.round(optProfitsB[i]);
+        const pnlC = Math.round(optProfitsC[i]);
         const etfPnL = Math.round(etfProfits[i]);
-        // 總損益 (A) = ETF + 策略A選擇權 + 帳戶損益
+        // 總損益
         const totalPnLA = etfPnL + pnlA + accountPnL;
-        // 總損益 (B) = ETF + 策略B選擇權 + 帳戶損益
         const totalPnLB = etfPnL + pnlB + accountPnL;
+        const totalPnLC = etfPnL + pnlC + accountPnL;
 
         const change = prices[i] - state.tseIndex;
 
@@ -793,13 +804,13 @@ function updatePnLTable() {
             <td>${changeStr}</td>
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
-            <td class="col-strategy-c">${formatPnL(pnlC)}</td> <!-- Add this line for Strategy C -->
+            <td class="col-strategy-c">${formatPnL(pnlC)}</td>
             <td>${formatPnL(etfPnL)}</td>
             <td class="col-etf-delta">${etfDelta}</td>
             <td>${formatPnL(accountPnL)}</td>
             <td class="col-total-a"><strong>${formatPnL(totalPnLA)}</strong></td>
             <td class="col-total-b"><strong>${formatPnL(totalPnLB)}</strong></td>
-            <td class="col-total-c"><strong>${formatPnLC >= 0 ? '+' : ''}${totalPnLC.toLocaleString()}</strong></td> <!-- Add this line for Strategy C -->
+            <td class="col-total-c"><strong>${formatPnL(totalPnLC)}</strong></td>
         `;
 
         elements.pnlTableBody.appendChild(row);
