@@ -160,7 +160,7 @@ function initPnLChart(canvasId) {
  * @param {boolean} showOptions - 是否顯示選擇權曲線
  * @param {Object} dataB - 策略 B 計算結果 (選填)
  */
-function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, dataB = null) {
+function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, dataB = null, dataC = null) {
     if (!pnlChart) {
         initPnLChart('pnl-chart');
     }
@@ -178,7 +178,7 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
     const datasets = [];
 
     // 只有在沒有比較資料時才顯示 ETF 和選擇權個別曲線，以免圖表太亂
-    if (!dataB) {
+    if (!dataB && !dataC) {
         if (showETF && etfProfits.some(v => v !== 0)) {
             datasets.push({
                 label: '00631L',
@@ -214,7 +214,7 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
 
     // 策略 A 總損益
     datasets.push({
-        label: dataB ? '策略 A 損益' : '組合總損益',
+        label: (dataB || dataC) ? '策略 A 損益' : '組合總損益',
         data: toScatterData(combinedProfits),
         borderColor: '#ef4444', // 红色
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -222,7 +222,7 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
         pointRadius: 0,
         pointHoverRadius: 6,
         tension: 0.1,
-        fill: !dataB, // 如果有比較，就不填滿背景
+        fill: (!dataB && !dataC), // 如果有比較，就不填滿背景
         showLine: true
     });
 
@@ -233,6 +233,23 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
             data: toScatterData(dataB.combinedProfits),
             borderColor: '#3b82f6', // 藍色
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 3,
+            borderDash: [5, 5], // 虛線
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            tension: 0.1,
+            fill: false,
+            showLine: true
+        });
+    }
+
+    // 策略 C 總損益 (如果有)
+    if (dataC) {
+        datasets.push({
+            label: '策略 C 損益',
+            data: toScatterData(dataC.combinedProfits),
+            borderColor: '#69f0ae', // 綠色
+            backgroundColor: 'rgba(105, 240, 174, 0.1)',
             borderWidth: 3,
             borderDash: [5, 5], // 虛線
             pointRadius: 0,

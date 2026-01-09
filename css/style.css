@@ -1655,19 +1655,19 @@ a:hover {
     color: var(--accent-light);
 }
 
-/* ======== A/B Strategy Comparison Grid ======== */
+/* ======== A/B Strategy Comparison Grid/* 策略比較區域 - 三欄版 */
 .comparison-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
     margin-bottom: 20px;
 }
 
 .strategy-column {
-    background: var(--bg-primary);
-    border-radius: 12px;
-    padding: 16px;
-    border: 2px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all var(--transition-fast);
 }
 
@@ -1681,6 +1681,11 @@ a:hover {
 
 #strategy-col-b {
     border-color: rgba(59, 130, 246, 0.3);
+}
+
+#strategy-col-c {
+    border-color: rgba(105, 240, 174, 0.3);
+    /* Green accent */
 }
 
 .strategy-header {
@@ -1698,6 +1703,10 @@ a:hover {
 
 .strategy-header.strategy-b {
     background: rgba(59, 130, 246, 0.15);
+}
+
+.strategy-header.strategy-c {
+    background: rgba(105, 240, 174, 0.15);
 }
 
 .strategy-label {
@@ -1776,6 +1785,12 @@ a:hover {
     background: rgba(59, 130, 246, 0.2);
     border-color: var(--accent) !important;
     color: var(--accent-light);
+}
+
+.strategy-add-btn.active[data-strategy="C"] {
+    background: rgba(105, 240, 174, 0.2);
+    border-color: #69f0ae !important;
+    color: #b9f6ca;
 }
 
 /* Responsive: Stack on mobile */

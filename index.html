@@ -309,6 +309,29 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Strategy C -->
+                    <div class="strategy-column" id="strategy-col-c">
+                        <div class="strategy-header strategy-c">
+                            <span class="strategy-label">🟢 策略 C</span>
+                            <span class="strategy-count" id="count-c">0 筆</span>
+                        </div>
+                        <div class="positions-list" id="positions-list-c"></div>
+                        <div class="premium-summary">
+                            <div class="premium-row">
+                                <span>收入:</span>
+                                <span class="profit" id="premium-in-c">+0</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>支出:</span>
+                                <span class="loss" id="premium-out-c">-0</span>
+                            </div>
+                            <div class="premium-row premium-net">
+                                <span>淨額:</span>
+                                <span id="premium-net-c">0 元</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Add to Strategy -->
@@ -316,6 +339,7 @@
                     <span>新增倉位到:</span>
                     <button class="btn btn-sm strategy-add-btn active" id="btn-add-to-a" data-strategy="A">🔴 A</button>
                     <button class="btn btn-sm strategy-add-btn" id="btn-add-to-b" data-strategy="B">🔵 B</button>
+                    <button class="btn btn-sm strategy-add-btn" id="btn-add-to-c" data-strategy="C">🟢 C</button>
                 </div>
             </section>
 
@@ -391,11 +415,13 @@
                                 <th>變動</th>
                                 <th class="col-strategy-a">🔴 策略 A</th>
                                 <th class="col-strategy-b">🔵 策略 B</th>
+                                <th class="col-strategy-c">🟢 策略 C</th>
                                 <th>00631L</th>
                                 <th>ETF損益變化</th>
                                 <th>帳戶</th>
                                 <th class="col-total-a">總損益 (A)</th>
                                 <th class="col-total-b">總損益 (B)</th>
+                                <th class="col-total-c">總損益 (C)</th>
                             </tr>
                         </thead>
                         <tbody id="pnl-table-body">

@@ -7,7 +7,8 @@
 // 策略儲存容器
 const strategies = {
     A: [],
-    B: []
+    B: [],
+    C: []
 };
 
 const state = {
@@ -87,14 +88,19 @@ function cacheElements() {
     // Dual column positions
     elements.positionsListA = document.getElementById('positions-list-a');
     elements.positionsListB = document.getElementById('positions-list-b');
+    elements.positionsListC = document.getElementById('positions-list-c');
     elements.countA = document.getElementById('count-a');
     elements.countB = document.getElementById('count-b');
+    elements.countC = document.getElementById('count-c');
     elements.premiumInA = document.getElementById('premium-in-a');
     elements.premiumOutA = document.getElementById('premium-out-a');
     elements.premiumNetA = document.getElementById('premium-net-a');
     elements.premiumInB = document.getElementById('premium-in-b');
     elements.premiumOutB = document.getElementById('premium-out-b');
     elements.premiumNetB = document.getElementById('premium-net-b');
+    elements.premiumInC = document.getElementById('premium-in-c');
+    elements.premiumOutC = document.getElementById('premium-out-c');
+    elements.premiumNetC = document.getElementById('premium-net-c');
 
     elements.pnlTableBody = document.getElementById('pnl-table-body');
 
@@ -121,6 +127,7 @@ function cacheElements() {
     elements.btnClearStrategy = document.getElementById('btn-clear-strategy');
     elements.btnAddToA = document.getElementById('btn-add-to-a');
     elements.btnAddToB = document.getElementById('btn-add-to-b');
+    elements.btnAddToC = document.getElementById('btn-add-to-c');
 
 
 
@@ -186,6 +193,7 @@ function bindEvents() {
     elements.btnClearStrategy?.addEventListener('click', handleClearStrategy);
     elements.btnAddToA?.addEventListener('click', () => handleAddToStrategyClick('A'));
     elements.btnAddToB?.addEventListener('click', () => handleAddToStrategyClick('B'));
+    elements.btnAddToC?.addEventListener('click', () => handleAddToStrategyClick('C'));
 
 
 
@@ -221,6 +229,9 @@ async function initApp() {
             }
             if (savedData.strategyB && savedData.strategyB.positions) {
                 state.strategies.B = savedData.strategyB.positions;
+            }
+            if (savedData.strategyC && savedData.strategyC.positions) {
+                state.strategies.C = savedData.strategyC.positions;
             }
 
             // 還原其他欄位
@@ -376,10 +387,12 @@ async function fetchMarketPrices() {
 function updateUI() {
     updateHeaderPrices();
     updateSidebarInputs();
-    updateSuggestedHedge();
-    updateETFSummary();
-    updatePositionsList();
-    updatePremiumSummary();
+    renderPositionsList('A');
+    updatePremiumSummary('A');
+    renderPositionsList('B');
+    updatePremiumSummary('B');
+    renderPositionsList('C');
+    updatePremiumSummary('C');
     updatePnLTable();
 
     // 更新履約價選擇器 (僅當中心點改變時才會重繪)
@@ -778,11 +791,13 @@ function updatePnLTable() {
             <td>${changeStr}</td>
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
+            <td class="col-strategy-c">${formatPnL(pnlC)}</td> <!-- Add this line for Strategy C -->
             <td>${formatPnL(etfPnL)}</td>
             <td class="col-etf-delta">${etfDelta}</td>
             <td>${formatPnL(accountPnL)}</td>
             <td class="col-total-a"><strong>${formatPnL(totalPnLA)}</strong></td>
             <td class="col-total-b"><strong>${formatPnL(totalPnLB)}</strong></td>
+            <td class="col-total-c"><strong>${formatPnLC >= 0 ? '+' : ''}${totalPnLC.toLocaleString()}</strong></td> <!-- Add this line for Strategy C -->
         `;
 
         elements.pnlTableBody.appendChild(row);
@@ -819,12 +834,26 @@ function updateChart() {
         });
     }
 
+    // 計算策略 C
+    let resultC = null;
+    if (state.strategies.C && state.strategies.C.length > 0) {
+        resultC = Calculator.calculatePnLCurve({
+            centerPrice: state.tseIndex,
+            priceRange: state.priceRange,
+            etfLots: state.etfLots,
+            etfCost: state.etfCost,
+            etfCurrent: state.etfCurrentPrice,
+            positions: state.strategies.C
+        });
+    }
+
     ChartModule.updatePnLChart(
         resultA,
         state.tseIndex,
-        state.etfLots > 0,
+        true,
         state.strategies.A.length > 0,
-        resultB
+        resultB,
+        resultC
     );
 
     updatePnLTable();
@@ -1054,7 +1083,7 @@ async function handleClear() {
     state.hedgeRatio = 0.2;
     state.strategies.A = [];
     state.strategies.B = [];
-
+    state.strategies.C = [];
     await FirebaseModule.clearData();
     updateUI();
     updateChart();
@@ -1147,7 +1176,8 @@ function autoSave() {
                 accountBalance: state.accountBalance,
                 currentStrategy: state.currentStrategy,
                 optionPositions: state.strategies.A,
-                strategyB: { positions: state.strategies.B }
+                strategyB: { positions: state.strategies.B },
+                strategyC: { positions: state.strategies.C }
             });
 
             if (success) {
