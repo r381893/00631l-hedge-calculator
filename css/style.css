@@ -253,58 +253,6 @@ a:hover {
 .form-group label {
     display: block;
     font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-family: inherit;
-    transition: all var(--transition-fast);
-}
-
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-.form-group input:hover,
-.form-group select:hover {
-    border-color: rgba(148, 163, 184, 0.3);
-}
-
-.form-hint {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 4px;
-}
-
-.form-row {
-    display: flex;
-    gap: 16px;
-}
-
-.form-row .form-group {
-    flex: 1;
-}
-
-.form-row .form-group.flex-2 {
-    flex: 2;
-}
-
-/* Radio Group */
-.radio-group {
-    display: flex;
     gap: 16px;
 }
 
@@ -447,7 +395,9 @@ a:hover {
     flex: 1;
     margin-left: var(--sidebar-width);
     padding: 24px;
-    max-width: calc(100% - var(--sidebar-width));
+    max-width: 1400px;
+    /* Constrain width on large screens */
+    width: 100%;
 }
 
 /* ======== Cards ======== */
@@ -2136,6 +2086,7 @@ summary.section-title-summary h2 {
     background: var(--success);
     color: white;
 }
+
 /* Closed Position Styles */
 .position-item.closed {
     background-color: #334155 !important;
@@ -2261,7 +2212,9 @@ summary.section-title-summary h2 {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 #ai-result-card {
@@ -2271,8 +2224,15 @@ summary.section-title-summary h2 {
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .result-header {
@@ -2313,8 +2273,8 @@ summary.section-title-summary h2 {
     color: var(--text-primary);
 }
 
-.markdown-content h1, 
-.markdown-content h2, 
+.markdown-content h1,
+.markdown-content h2,
 .markdown-content h3 {
     color: #f1f5f9;
     margin-top: 16px;
@@ -2328,7 +2288,8 @@ summary.section-title-summary h2 {
 }
 
 .markdown-content strong {
-    color: #f472b6; /* Pink-400 */
+    color: #f472b6;
+    /* Pink-400 */
 }
 
 .markdown-content em {

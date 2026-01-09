@@ -202,7 +202,8 @@
 
         <!-- Option Form -->
         <div id="option-form" class="position-form">
-            <div class="form-row">
+            <div class="compact-form-grid">
+                <!-- Row 1 Items -->
                 <div class="form-group">
                     <label>權利 (Type)</label>
                     <select id="opt-type">
@@ -210,30 +211,31 @@
                         <option value="Put">Put (賣權)</option>
                     </select>
                 </div>
+
+                <div class="form-group">
+                    <label>買賣方向</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="opt-direction" value="買進" checked>
+                            <span>Buy</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="opt-direction" value="賣出">
+                            <span>Sell</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>履約價 (Strike)</label>
                     <input type="number" id="opt-strike" step="100">
                 </div>
-            </div>
-            <!-- Buying/Selling Direction -->
-            <div class="form-group">
-                <label>買賣方向</label>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="opt-direction" value="買進" checked>
-                        <span>Buy (買進)</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="opt-direction" value="賣出">
-                        <span>Sell (賣出)</span>
-                    </label>
-                </div>
-            </div>
-            <div class="form-row">
+
                 <div class="form-group">
                     <label>口數 (Lots)</label>
                     <input type="number" id="opt-lots" value="1" min="1">
                 </div>
+
                 <div class="form-group">
                     <label>成交價 (Premium)</label>
                     <input type="number" id="opt-premium" step="0.5" min="0">
@@ -250,7 +252,7 @@
             <div class="alert-info mb-3">
                 💡 微台期貨固定為 <strong>做空 (Sell)</strong> 用於避險
             </div>
-            <div class="form-row">
+            <div class="compact-form-grid">
                 <div class="form-group">
                     <label>履約價 (Strike)</label>
                     <input type="number" id="futures-strike" step="100">
