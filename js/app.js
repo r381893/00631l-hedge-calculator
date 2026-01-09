@@ -635,6 +635,11 @@ function createPositionItem(pos, index, strategy = 'A') {
     // 群組標記
     const groupBadge = pos.groupId ? `<span class="group-badge">#${pos.groupId}</span>` : '';
 
+    // 0 口數時半透明顯示
+    if (pos.lots === 0) {
+        div.style.opacity = '0.5';
+    }
+
     if (isFutures) {
         tagsHTML = `
             <span class="position-tag tag-product">微台期貨</span>
@@ -990,7 +995,7 @@ function handleLotsStepper(e) {
         const currentLots = state.strategies[strategy][index].lots;
         const newLots = isPlus ? currentLots + 1 : currentLots - 1;
 
-        if (newLots >= 1 && newLots <= 999) {
+        if (newLots >= 0 && newLots <= 999) {
             state.strategies[strategy][index].lots = newLots;
             updateUI();
             updateChart();
