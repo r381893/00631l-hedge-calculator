@@ -223,15 +223,22 @@ async function initApp() {
         // 載入資料
         const savedData = await FirebaseModule.loadData();
         if (savedData) {
+            // 輔助函數：確保轉換為陣列 (處理 Firebase 可能回傳物件的情況)
+            const ensureArray = (data) => {
+                if (!data) return [];
+                if (Array.isArray(data)) return data;
+                return Object.values(data);
+            };
+
             // 資料遷移：處理各種儲存格式
             if (savedData.optionPositions) {
-                state.strategies.A = savedData.optionPositions;
+                state.strategies.A = ensureArray(savedData.optionPositions);
             }
             if (savedData.strategyB && savedData.strategyB.positions) {
-                state.strategies.B = savedData.strategyB.positions;
+                state.strategies.B = ensureArray(savedData.strategyB.positions);
             }
             if (savedData.strategyC && savedData.strategyC.positions) {
-                state.strategies.C = savedData.strategyC.positions;
+                state.strategies.C = ensureArray(savedData.strategyC.positions);
             }
 
             // 還原其他欄位
