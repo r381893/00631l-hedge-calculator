@@ -1141,6 +1141,142 @@ a:hover {
     margin: 4px 0;
 }
 
+/* ======== Copy Strategy Card ======== */
+.copy-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 15px;
+    background: rgba(30, 41, 59, 0.3);
+    /* Lighter dark bg */
+    border-radius: 12px;
+    flex-wrap: wrap;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.copy-group {
+    display: flex;
+    flex-direction: column;
+    /* Label on top */
+    gap: 6px;
+    position: relative;
+}
+
+.copy-group label {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.copy-group .form-select {
+    min-width: 160px;
+    padding: 10px 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    /* Custom arrow */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 32px;
+}
+
+.copy-group .form-select:hover {
+    border-color: var(--accent);
+}
+
+.copy-group .form-select:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.copy-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-top: 24px;
+    /* Align with input not label */
+}
+
+.copy-actions {
+    margin-top: 24px;
+    /* Align with input */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.copy-hint {
+    color: var(--danger-light);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* Collapsible Details */
+details {
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+summary.section-title-summary {
+    cursor: pointer;
+    list-style: none;
+    /* Hide default triangle */
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    user-select: none;
+}
+
+summary.section-title-summary::-webkit-details-marker {
+    display: none;
+}
+
+summary.section-title-summary::after {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    margin-left: 10px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    transition: transform 0.3s;
+    opacity: 0.7;
+}
+
+details[open] summary.section-title-summary::after {
+    transform: rotate(180deg);
+}
+
+summary.section-title-summary:hover::after {
+    opacity: 1;
+    stroke: var(--accent);
+}
+
+summary.section-title-summary h2 {
+    display: inline-block;
+}
+
 /* ======== Toast ======== */
 .toast {
     position: fixed;
