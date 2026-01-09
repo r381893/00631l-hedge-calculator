@@ -253,23 +253,47 @@
 
             <!-- AI Inventory Parser -->
             <section class="card" id="ai-inventory">
+                <details>
+                    <summary class="section-title-summary">
+                        <h2 class="section-title inline-title">🤖 AI 庫存判讀 (點擊展開)</h2>
+                    </summary>
 
-                <!-- 文字貼上 -->
-                <p class="upload-hint">📝 貼上券商庫存資料（支援富邦、永豐、元大等格式）</p>
-                <div class="form-group">
-                    <textarea id="inventory-text" rows="4" placeholder="請貼上您的庫存資料..."></textarea>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-primary" id="btn-parse-inventory">🔍 解析文字</button>
-                    <button class="btn btn-secondary" id="btn-clear-inventory">🧹 清空</button>
-                </div>
+                    <!-- 圖片上傳 -->
+                    <div class="ocr-section">
+                        <p class="upload-hint">📸 上傳券商庫存截圖，AI 自動辨識選擇權倉位</p>
+                        <div class="image-upload-area" id="image-upload-area">
+                            <input type="file" id="image-upload" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">📷</span>
+                                <p>拖曳圖片到這裡，或<button class="btn-link" id="btn-browse-image">點擊上傳</button></p>
+                            </div>
+                        </div>
+                        <div class="image-preview" id="image-preview" style="display: none;">
+                            <img id="preview-img" src="" alt="預覽">
+                            <button class="btn btn-primary" id="btn-ocr-recognize">🔍 AI 辨識圖片</button>
+                            <button class="btn btn-secondary" id="btn-clear-image">🧹 清除</button>
+                        </div>
+                    </div>
 
-                <div class="parse-results" id="parse-results" style="display: none;">
-                    <h4>📊 解析結果</h4>
-                    <div class="parsed-etf" id="parsed-etf"></div>
-                    <div class="parsed-options" id="parsed-options"></div>
-                    <button class="btn btn-success btn-full" id="btn-apply-parsed">✅ 套用到計算器</button>
-                </div>
+                    <div class="divider-or"><span>或</span></div>
+
+                    <!-- 文字貼上 -->
+                    <p class="upload-hint">📝 貼上券商庫存資料（支援富邦、永豐、元大等格式）</p>
+                    <div class="form-group">
+                        <textarea id="inventory-text" rows="4" placeholder="請貼上您的庫存資料..."></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="btn-parse-inventory">🔍 解析文字</button>
+                        <button class="btn btn-secondary" id="btn-clear-inventory">🧹 清空</button>
+                    </div>
+
+                    <div class="parse-results" id="parse-results" style="display: none;">
+                        <h4>📊 解析結果</h4>
+                        <div class="parsed-etf" id="parsed-etf"></div>
+                        <div class="parsed-options" id="parsed-options"></div>
+                        <button class="btn btn-success btn-full" id="btn-apply-parsed">✅ 套用到計算器</button>
+                    </div>
+                </details>
             </section>
 
             <!-- PnL Chart -->
