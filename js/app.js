@@ -582,32 +582,34 @@ function handleStrikePickerClick(e) {
 /**
  * 更新倉位列表（雙欄顯示 A/B 策略）
  */
-function updatePositionsList() {
-    const hasA = state.strategies.A.length > 0;
-    const hasB = state.strategies.B.length > 0;
+/**
+ * 渲染單一策略的倉位列表
+ * @param {string} strategy - 策略標識 ('A', 'B', 'C')
+ */
+function renderPositionsList(strategy) {
+    const listElement = elements[`positionsList${strategy}`];
+    const countElement = elements[`count${strategy}`];
 
-    if (!hasA && !hasB) {
-        elements.positionsSection.style.display = 'none';
-        return;
+    if (!listElement || !countElement) return;
+
+    // 清空列表
+    listElement.innerHTML = '';
+
+    // 渲染倉位
+    const positions = state.strategies[strategy] || [];
+    positions.forEach((pos, index) => {
+        const item = createPositionItem(pos, index, strategy);
+        listElement.appendChild(item);
+    });
+
+    // 更新計數
+    countElement.textContent = `${positions.length} 筆`;
+
+    // 控制整體區塊顯示 (如果有任一策略有倉位就顯示)
+    const hasAnyPosition = Object.values(state.strategies).some(s => s.length > 0);
+    if (elements.positionsSection) {
+        elements.positionsSection.style.display = hasAnyPosition ? 'block' : 'none';
     }
-
-    elements.positionsSection.style.display = 'block';
-
-    // 渲染策略 A
-    elements.positionsListA.innerHTML = '';
-    state.strategies.A.forEach((pos, index) => {
-        const item = createPositionItem(pos, index, 'A');
-        elements.positionsListA.appendChild(item);
-    });
-    elements.countA.textContent = `${state.strategies.A.length} 筆`;
-
-    // 渲染策略 B
-    elements.positionsListB.innerHTML = '';
-    state.strategies.B.forEach((pos, index) => {
-        const item = createPositionItem(pos, index, 'B');
-        elements.positionsListB.appendChild(item);
-    });
-    elements.countB.textContent = `${state.strategies.B.length} 筆`;
 }
 
 /**
