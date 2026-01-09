@@ -716,6 +716,13 @@ function updatePremiumSummary() {
     elements.premiumOutB.textContent = `-${summaryB.premiumOut.toLocaleString()}`;
     elements.premiumNetB.textContent = `${summaryB.netPremium >= 0 ? '+' : ''}${summaryB.netPremium.toLocaleString()} 元`;
     elements.premiumNetB.className = summaryB.netPremium >= 0 ? 'profit' : 'loss';
+
+    // 策略 C
+    const summaryC = Calculator.calculatePremiumSummary(state.strategies.C || []);
+    elements.premiumInC.textContent = `+${summaryC.premiumIn.toLocaleString()}`;
+    elements.premiumOutC.textContent = `-${summaryC.premiumOut.toLocaleString()}`;
+    elements.premiumNetC.textContent = `${summaryC.netPremium >= 0 ? '+' : ''}${summaryC.netPremium.toLocaleString()} 元`;
+    elements.premiumNetC.className = summaryC.netPremium >= 0 ? 'profit' : 'loss';
 }
 
 /**
