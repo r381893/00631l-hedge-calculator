@@ -69,10 +69,10 @@ function cacheElements() {
     elements.priceRangeInput = document.getElementById('price-range');
     elements.currentIndexDisplay = document.getElementById('current-index-display');
 
-    // Main Content
-    elements.btnReload = document.getElementById('btn-reload');
-    elements.btnSave = document.getElementById('btn-save');
-    elements.btnClear = document.getElementById('btn-clear');
+    // File Operations - 移除
+    // elements.btnReload = document.getElementById('btn-reload');
+    // elements.btnSave = document.getElementById('btn-save');
+    // elements.btnClear = document.getElementById('btn-clear');
 
     elements.etfSummarySection = document.getElementById('etf-summary');
     elements.statLots = document.getElementById('stat-lots');
@@ -122,10 +122,6 @@ function cacheElements() {
     elements.btnAddFutures = document.getElementById('btn-add-futures');
 
     // Strategy Controls
-    elements.btnOpenCopyModal = document.getElementById('btn-open-copy-modal');
-    elements.copyModal = document.getElementById('copy-strategy-modal');
-    elements.btnCloseCopyModal = document.getElementById('btn-close-copy-modal');
-    elements.btnCancelCopy = document.getElementById('btn-cancel-copy');
     elements.btnConfirmCopy = document.getElementById('btn-confirm-copy');
     elements.copySource = document.getElementById('copy-source');
     elements.copyTarget = document.getElementById('copy-target');
@@ -180,9 +176,9 @@ function bindEvents() {
     elements.accountBalanceInput?.addEventListener('input', handleSettingsChange);
     elements.priceRangeInput?.addEventListener('input', handleSettingsChange);
 
-    // File Operations
-    elements.btnReload?.addEventListener('click', handleReload);
-    elements.btnSave?.addEventListener('click', handleSave);
+    // File Operations (已移除)
+    // elements.btnReload?.addEventListener('click', () => window.location.reload());
+    // elements.btnSave?.addEventListener('click', handleSave);
     elements.btnClear?.addEventListener('click', handleClear);
 
     // Product Tabs
@@ -196,9 +192,7 @@ function bindEvents() {
 
     // Strategy Controls
     elements.btnGroupPositions?.addEventListener('click', handleGroupPositions);
-    elements.btnOpenCopyModal?.addEventListener('click', handleOpenCopyModal);
-    elements.btnCloseCopyModal?.addEventListener('click', handleCloseCopyModal);
-    elements.btnCancelCopy?.addEventListener('click', handleCloseCopyModal);
+    // elements.btnOpenCopyModal... (已移除)
     elements.btnConfirmCopy?.addEventListener('click', handleConfirmCopy);
     elements.copySource?.addEventListener('change', handleCopySourceChange);
     elements.btnClearStrategy?.addEventListener('click', handleClearStrategy);
@@ -1151,22 +1145,6 @@ function handleAddToStrategyClick(strategy) {
 }
 
 /**
- * 開啟複製策略視窗
- */
-function handleOpenCopyModal() {
-    elements.copyModal.style.display = 'block';
-    // 預設排除相同選擇
-    handleCopySourceChange();
-}
-
-/**
- * 關閉複製策略視窗
- */
-function handleCloseCopyModal() {
-    elements.copyModal.style.display = 'none';
-}
-
-/**
  * 當來源改變時，更新目標選項（避免選擇相同）
  */
 function handleCopySourceChange() {
@@ -1213,7 +1191,6 @@ function handleConfirmCopy() {
     autoSave();
 
     showToast('success', `已成功將 策略 ${source} 複製到 策略 ${target}`);
-    handleCloseCopyModal();
 }
 
 /**

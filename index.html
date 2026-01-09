@@ -128,120 +128,29 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- File Operations -->
-            <section class="card" id="file-operations">
-                <h2 class="section-title">📂 檔案操作</h2>
-                <div class="button-group">
-                    <button class="btn btn-secondary" id="btn-reload">🔄 重新載入</button>
-                    <button class="btn btn-primary" id="btn-save">💾 手動儲存</button>
-                    <button class="btn btn-danger" id="btn-clear">🧹 清空所有</button>
-                </div>
-            </section>
-
-            <!-- ETF Summary -->
-            <section class="card" id="etf-summary" style="display: none;">
-                <h2 class="section-title">💰 00631L 庫存摘要</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-label">持有張數</span>
-                        <span class="stat-value" id="stat-lots">--</span>
-                        <span class="stat-sub" id="stat-shares">-- 股</span>
+            <!-- Copy Strategy Card -->
+            <section class="card" id="copy-strategy-card">
+                <h2 class="section-title">📥 複製策略</h2>
+                <div class="copy-controls">
+                    <div class="copy-group">
+                        <label for="copy-source">從 (來源):</label>
+                        <select id="copy-source" class="form-select">
+                            <option value="A">🔴 策略 A</option>
+                            <option value="B">🔵 策略 B</option>
+                            <option value="C">🟢 策略 C</option>
+                        </select>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-label">市值</span>
-                        <span class="stat-value" id="stat-market-value">--</span>
+                    <div class="copy-arrow">➔</div>
+                    <div class="copy-group">
+                        <label for="copy-target">複製到 (目標):</label>
+                        <select id="copy-target" class="form-select">
+                            <option value="B" selected>🔵 策略 B</option>
+                            <option value="A">🔴 策略 A</option>
+                            <option value="C">🟢 策略 C</option>
+                        </select>
                     </div>
-                    <div class="stat-card">
-                        <span class="stat-label">成本</span>
-                        <span class="stat-value" id="stat-cost-value">--</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">未實現損益</span>
-                        <span class="stat-value" id="stat-unrealized-pnl">--</span>
-                        <span class="stat-sub" id="stat-pnl-pct">--%</span>
-                    </div>
-                </div>
-                <div class="hedge-suggestion" id="hedge-suggestion">
-                    <span class="suggestion-icon">📌</span>
-                    <span class="suggestion-text"></span>
-                </div>
-            </section>
-
-            <!-- Add Position -->
-            <section class="card" id="add-position">
-                <h2 class="section-title">➕ 新增倉位</h2>
-
-                <!-- Product Type Tabs -->
-                <div class="tab-group">
-                    <button class="tab active" data-product="option">台指選擇權 (50元/點)</button>
-                    <button class="tab" data-product="futures">微台期貨 (10元/點)</button>
-                </div>
-
-                <!-- Option Form -->
-                <div class="position-form" id="option-form">
-                    <!-- Strike Picker Grid -->
-                    <div class="strike-picker-section">
-                        <h4>📊 點選履約價 (C=買權 P=賣權)</h4>
-                        <div class="strike-picker-grid" id="strike-picker-grid">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <div class="divider-or"><span>或手動輸入</span></div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>類型</label>
-                            <select id="opt-type">
-                                <option value="Call">買權 (Call)</option>
-                                <option value="Put">賣權 (Put)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>方向</label>
-                            <div class="radio-group">
-                                <label class="radio-label">
-                                    <input type="radio" name="opt-direction" value="買進" checked>
-                                    <span>買進</span>
-                                </label>
-                                <label class="radio-label">
-                                    <input type="radio" name="opt-direction" value="賣出">
-                                    <span>賣出</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="opt-strike">履約價</label>
-                            <input type="number" id="opt-strike" value="23000" step="100" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="opt-lots">口數</label>
-                            <input type="number" id="opt-lots" value="1" step="1" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="opt-premium">權利金 (點)</label>
-                            <input type="number" id="opt-premium" value="0" step="1" min="0">
-                        </div>
-                    </div>
-                    <button class="btn btn-success btn-full" id="btn-add-option">✅ 新增選擇權倉位</button>
-                </div>
-
-                <!-- Futures Form -->
-                <div class="position-form" id="futures-form" style="display: none;">
-                    <div class="form-row">
-                        <div class="form-group flex-2">
-                            <label for="futures-strike">進場價</label>
-                            <input type="number" id="futures-strike" value="23000" step="100" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="futures-lots">口數</label>
-                            <input type="number" id="futures-lots" value="1" step="1" min="1">
-                        </div>
-                    </div>
-                    <p class="form-hint">📌 微台期貨：做空方向，一點 10 元</p>
-                    <button class="btn btn-success btn-full" id="btn-add-futures">✅ 新增微台期貨倉位</button>
+                    <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
+                    <span class="copy-hint" id="copy-hint">⚠️ 將覆蓋目標策略</span>
                 </div>
             </section>
 
@@ -253,46 +162,9 @@
                         <button class="btn btn-sm btn-secondary" id="btn-group-positions" title="建立複試單群組" disabled>
                             🔗 建立群組
                         </button>
-                        <button class="btn btn-sm btn-secondary" id="btn-open-copy-modal" title="複製策略">
-                            📥 複製策略...
-                        </button>
                         <button class="btn btn-sm btn-danger" id="btn-clear-strategy" title="清空當前策略">
                             🧹 清空
                         </button>
-                    </div>
-                </div>
-
-                <!-- Copy Strategy Modal -->
-                <div class="modal" id="copy-strategy-modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>📥 複製策略</h3>
-                            <span class="close-modal" id="btn-close-copy-modal">&times;</span>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="copy-source">從 (來源):</label>
-                                <select id="copy-source" class="form-select">
-                                    <option value="A">🔴 策略 A</option>
-                                    <option value="B">🔵 策略 B</option>
-                                    <option value="C">🟢 策略 C</option>
-                                </select>
-                            </div>
-                            <div class="arrow-down">⬇️</div>
-                            <div class="form-group">
-                                <label for="copy-target">複製到 (目標):</label>
-                                <select id="copy-target" class="form-select">
-                                    <option value="B" selected>🔵 策略 B</option>
-                                    <option value="A">🔴 策略 A</option>
-                                    <option value="C">🟢 策略 C</option>
-                                </select>
-                            </div>
-                            <p class="warning-text">⚠️ 注意：目標策略原本的倉位將被清空覆蓋！</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" id="btn-cancel-copy">取消</button>
-                            <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
-                        </div>
                     </div>
                 </div>
 
@@ -381,30 +253,6 @@
 
             <!-- AI Inventory Parser -->
             <section class="card" id="ai-inventory">
-                <h2 class="section-title">🤖 AI 庫存判讀</h2>
-
-                <!-- 圖片上傳 -->
-                <div class="ocr-section">
-                    <p class="upload-hint">📸 上傳券商庫存截圖，AI 自動辨識選擇權倉位</p>
-                    <div class="image-upload-area" id="image-upload-area">
-                        <input type="file" id="image-upload" accept="image/*" hidden>
-                        <div class="upload-content">
-                            <span class="upload-icon">📷</span>
-                            <p>拖曳圖片到這裡，或<button class="btn-link" id="btn-browse-image">點擊上傳</button></p>
-                        </div>
-                    </div>
-                    <div class="image-preview" id="image-preview" style="display: none;">
-                        <img id="preview-img" src="" alt="預覽">
-                        <button class="btn btn-primary" id="btn-ocr-recognize">🔍 AI 辨識圖片</button>
-                        <button class="btn btn-secondary" id="btn-clear-image">🧹 清除</button>
-                    </div>
-                    <div class="ocr-loading" id="ocr-loading" style="display: none;">
-                        <div class="spinner"></div>
-                        <p>AI 正在辨識中...</p>
-                    </div>
-                </div>
-
-                <div class="divider-or"><span>或</span></div>
 
                 <!-- 文字貼上 -->
                 <p class="upload-hint">📝 貼上券商庫存資料（支援富邦、永豐、元大等格式）</p>
