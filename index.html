@@ -253,12 +253,46 @@
                         <button class="btn btn-sm btn-secondary" id="btn-group-positions" title="建立複試單群組" disabled>
                             🔗 建立群組
                         </button>
-                        <button class="btn btn-sm btn-secondary" id="btn-copy-strategy" title="複製策略 A 到 B">
-                            📥 複製 A ➔ B
+                        <button class="btn btn-sm btn-secondary" id="btn-open-copy-modal" title="複製策略">
+                            📥 複製策略...
                         </button>
                         <button class="btn btn-sm btn-danger" id="btn-clear-strategy" title="清空當前策略">
                             🧹 清空
                         </button>
+                    </div>
+                </div>
+
+                <!-- Copy Strategy Modal -->
+                <div class="modal" id="copy-strategy-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>📥 複製策略</h3>
+                            <span class="close-modal" id="btn-close-copy-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="copy-source">從 (來源):</label>
+                                <select id="copy-source" class="form-select">
+                                    <option value="A">🔴 策略 A</option>
+                                    <option value="B">🔵 策略 B</option>
+                                    <option value="C">🟢 策略 C</option>
+                                </select>
+                            </div>
+                            <div class="arrow-down">⬇️</div>
+                            <div class="form-group">
+                                <label for="copy-target">複製到 (目標):</label>
+                                <select id="copy-target" class="form-select">
+                                    <option value="B" selected>🔵 策略 B</option>
+                                    <option value="A">🔴 策略 A</option>
+                                    <option value="C">🟢 策略 C</option>
+                                </select>
+                            </div>
+                            <p class="warning-text">⚠️ 注意：目標策略原本的倉位將被清空覆蓋！</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" id="btn-cancel-copy">取消</button>
+                            <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
+                        </div>
                     </div>
                 </div>
 

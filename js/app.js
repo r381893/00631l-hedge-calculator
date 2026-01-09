@@ -122,7 +122,14 @@ function cacheElements() {
     elements.btnAddFutures = document.getElementById('btn-add-futures');
 
     // Strategy Controls
-    elements.btnCopyStrategy = document.getElementById('btn-copy-strategy');
+    elements.btnOpenCopyModal = document.getElementById('btn-open-copy-modal');
+    elements.copyModal = document.getElementById('copy-strategy-modal');
+    elements.btnCloseCopyModal = document.getElementById('btn-close-copy-modal');
+    elements.btnCancelCopy = document.getElementById('btn-cancel-copy');
+    elements.btnConfirmCopy = document.getElementById('btn-confirm-copy');
+    elements.copySource = document.getElementById('copy-source');
+    elements.copyTarget = document.getElementById('copy-target');
+
     elements.btnGroupPositions = document.getElementById('btn-group-positions');
     elements.btnClearStrategy = document.getElementById('btn-clear-strategy');
     elements.btnAddToA = document.getElementById('btn-add-to-a');
@@ -189,7 +196,11 @@ function bindEvents() {
 
     // Strategy Controls
     elements.btnGroupPositions?.addEventListener('click', handleGroupPositions);
-    elements.btnCopyStrategy?.addEventListener('click', handleCopyStrategy);
+    elements.btnOpenCopyModal?.addEventListener('click', handleOpenCopyModal);
+    elements.btnCloseCopyModal?.addEventListener('click', handleCloseCopyModal);
+    elements.btnCancelCopy?.addEventListener('click', handleCloseCopyModal);
+    elements.btnConfirmCopy?.addEventListener('click', handleConfirmCopy);
+    elements.copySource?.addEventListener('change', handleCopySourceChange);
     elements.btnClearStrategy?.addEventListener('click', handleClearStrategy);
     elements.btnAddToA?.addEventListener('click', () => handleAddToStrategyClick('A'));
     elements.btnAddToB?.addEventListener('click', () => handleAddToStrategyClick('B'));
@@ -1140,14 +1151,69 @@ function handleAddToStrategyClick(strategy) {
 }
 
 /**
- * 複製策略 A 到 B
+ * 開啟複製策略視窗
  */
-function handleCopyStrategy() {
-    state.strategies.B = JSON.parse(JSON.stringify(state.strategies.A));
+function handleOpenCopyModal() {
+    elements.copyModal.style.display = 'block';
+    // 預設排除相同選擇
+    handleCopySourceChange();
+}
+
+/**
+ * 關閉複製策略視窗
+ */
+function handleCloseCopyModal() {
+    elements.copyModal.style.display = 'none';
+}
+
+/**
+ * 當來源改變時，更新目標選項（避免選擇相同）
+ */
+function handleCopySourceChange() {
+    const source = elements.copySource.value;
+    const targetSelect = elements.copyTarget;
+
+    // 遍歷所有選項
+    Array.from(targetSelect.options).forEach(option => {
+        if (option.value === source) {
+            option.disabled = true;
+            if (targetSelect.value === source) {
+                // 如果當前選中的被禁用，切換到另一個可用選項
+                const available = Array.from(targetSelect.options).find(opt => opt.value !== source);
+                if (available) targetSelect.value = available.value;
+            }
+        } else {
+            option.disabled = false;
+        }
+    });
+}
+
+/**
+ * 確認複製策略
+ */
+function handleConfirmCopy() {
+    const source = elements.copySource.value;
+    const target = elements.copyTarget.value;
+
+    if (source === target) {
+        showToast('error', '來源與目標不能相同');
+        return;
+    }
+
+    if (!confirm(`確定要將 策略 ${source} 複製到 策略 ${target} 嗎？\n目標策略原本的倉位將由來源策略覆蓋！`)) {
+        return;
+    }
+
+    // 執行深拷貝複製
+    state.strategies[target] = JSON.parse(JSON.stringify(state.strategies[source]));
+
+    // 更新介面
     updateUI();
     updateChart();
     autoSave();
-    showToast('success', '已將策略 A 複製到策略 B');
+
+    showToast('success', `已成功將 策略 ${source} 複製到 策略 ${target}`);
+    handleCloseCopyModal();
 }
 
 /**
