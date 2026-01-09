@@ -176,10 +176,13 @@ async function loadData() {
 
     // 3. 比較資料版本 (以 lastUpdated 為準)
     if (firebaseData && localData) {
-        const firebaseTime = new Date(firebaseData.lastUpdated || 0).getTime();
-        const localTime = new Date(localData.lastUpdated || 0).getTime();
+        let firebaseTime = new Date(firebaseData.lastUpdated).getTime();
+        let localTime = new Date(localData.lastUpdated).getTime();
 
-        if (localTime > firebaseTime) {
+        if (isNaN(firebaseTime)) firebaseTime = 0;
+        if (isNaN(localTime)) localTime = 0;
+
+        if (localTime >= firebaseTime) {
             console.log(`使用較新的本地資料 (${localData.lastUpdated})`);
             return { ...localData, _source: 'local' };
         } else {

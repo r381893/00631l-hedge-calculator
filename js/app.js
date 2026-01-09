@@ -158,13 +158,13 @@ function bindEvents() {
     elements.sidebarToggle?.addEventListener('click', toggleSidebar);
 
     // Sidebar Inputs
-    elements.etfLotsInput?.addEventListener('change', handleSettingsChange);
-    elements.etfCostInput?.addEventListener('change', handleSettingsChange);
-    elements.etfCurrentInput?.addEventListener('change', handleSettingsChange);
-    elements.hedgeRatioInput?.addEventListener('change', handleSettingsChange);
-    elements.accountCostInput?.addEventListener('change', handleSettingsChange);
-    elements.accountBalanceInput?.addEventListener('change', handleSettingsChange);
-    elements.priceRangeInput?.addEventListener('change', handleSettingsChange);
+    elements.etfLotsInput?.addEventListener('input', handleSettingsChange);
+    elements.etfCostInput?.addEventListener('input', handleSettingsChange);
+    elements.etfCurrentInput?.addEventListener('input', handleSettingsChange);
+    elements.hedgeRatioInput?.addEventListener('input', handleSettingsChange);
+    elements.accountCostInput?.addEventListener('input', handleSettingsChange);
+    elements.accountBalanceInput?.addEventListener('input', handleSettingsChange);
+    elements.priceRangeInput?.addEventListener('input', handleSettingsChange);
 
     // File Operations
     elements.btnReload?.addEventListener('click', handleReload);
@@ -1152,6 +1152,7 @@ function autoSave() {
 
             if (success) {
                 updateSaveStatus(true);
+                // showToast('success', '資料已自動儲存'); // Optional: prevent spamming toasts
             } else {
                 updateSaveStatus(false, '📂 僅儲存於本地');
             }
