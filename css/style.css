@@ -1394,8 +1394,9 @@ summary.section-title-summary h2 {
     z-index: 2000;
 }
 
-transform: translateY(0);
-opacity: 1;
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
 }
 
 /* Copy Strategy Refined Layout */
@@ -1501,6 +1502,33 @@ opacity: 1;
 .btn-ai-analysis:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(106, 17, 203, 0.4);
+}
+
+/* Firebase Config Input */
+#firebase-config-input {
+    background-color: rgba(15, 23, 42, 0.8);
+    color: #a78bfa;
+    /* Light purple for code */
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    transition: all 0.2s;
+}
+
+#firebase-config-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    background-color: rgba(15, 23, 42, 0.95);
+}
+
+#firebase-config-input::placeholder {
+    color: rgba(148, 163, 184, 0.4);
 }
 
 .toast.success {
