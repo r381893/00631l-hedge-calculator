@@ -21,6 +21,13 @@ const state = {
     accountCost: 0, // 帳戶成本
     accountBalance: 0, // 目前餘額
 
+    // 已實現損益 (平倉後的獲利/虧損)
+    realizedPnL: {
+        A: 0,
+        B: 0,
+        C: 0
+    },
+
     // 策略管理
     strategies: strategies,
     currentStrategy: 'A',
@@ -106,6 +113,11 @@ function cacheElements() {
     elements.premiumOutC = document.getElementById('premium-out-c');
     elements.premiumNetC = document.getElementById('premium-net-c');
 
+    // 已實現損益輸入
+    elements.realizedPnLA = document.getElementById('realized-pnl-a');
+    elements.realizedPnLB = document.getElementById('realized-pnl-b');
+    elements.realizedPnLC = document.getElementById('realized-pnl-c');
+
     elements.pnlTableBody = document.getElementById('pnl-table-body');
 
     // Tabs
@@ -185,6 +197,11 @@ function bindEvents() {
     elements.accountCostInput?.addEventListener('input', handleSettingsChange);
     elements.accountBalanceInput?.addEventListener('input', handleSettingsChange);
     elements.priceRangeInput?.addEventListener('input', handleSettingsChange);
+
+    // 已實現損益輸入
+    elements.realizedPnLA?.addEventListener('input', handleRealizedPnLChange);
+    elements.realizedPnLB?.addEventListener('input', handleRealizedPnLChange);
+    elements.realizedPnLC?.addEventListener('input', handleRealizedPnLChange);
 
     // File Operations (已移除)
     // elements.btnReload?.addEventListener('click', () => window.location.reload());
@@ -290,12 +307,25 @@ async function initApp() {
             state.accountBalance = savedData.accountBalance || 0;
             state.currentStrategy = savedData.currentStrategy || 'A';
 
+            // 還原已實現損益
+            if (savedData.realizedPnL) {
+                state.realizedPnL.A = savedData.realizedPnL.A || 0;
+                state.realizedPnL.B = savedData.realizedPnL.B || 0;
+                state.realizedPnL.C = savedData.realizedPnL.C || 0;
+            }
+
             // 確保 optionPositions 正確指向
             state.optionPositions = state.strategies[state.currentStrategy];
 
             // 更新帳戶輸入欄位
             if (elements.accountCostInput) elements.accountCostInput.value = state.accountCost;
             if (elements.accountBalanceInput) elements.accountBalanceInput.value = state.accountBalance;
+
+            // 更新已實現損益輸入欄位
+            if (elements.realizedPnLA) elements.realizedPnLA.value = state.realizedPnL.A;
+            if (elements.realizedPnLB) elements.realizedPnLB.value = state.realizedPnL.B;
+            if (elements.realizedPnLC) elements.realizedPnLC.value = state.realizedPnL.C;
+
             updateAccountPnLDisplay();
 
             // 顯示資料來源提示
@@ -938,6 +968,11 @@ function updatePnLTable() {
     const { optionProfits: optProfitsC } = resultC;
     const accountPnL = getAccountPnL();
 
+    // 取得各策略已實現損益
+    const realizedA = state.realizedPnL.A || 0;
+    const realizedB = state.realizedPnL.B || 0;
+    const realizedC = state.realizedPnL.C || 0;
+
     const formatPnL = (val) => {
         const cls = val >= 0 ? 'profit' : 'loss';
         const sign = val >= 0 ? '+' : '';
@@ -953,12 +988,12 @@ function updatePnLTable() {
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
 
-        // 策略 A/B/C 只計算選擇權損益
-        const pnlA = Math.round(optProfitsA[i]);
-        const pnlB = Math.round(optProfitsB[i]);
-        const pnlC = Math.round(optProfitsC[i]);
+        // 策略 A/B/C = 選擇權損益 + 已實現損益
+        const pnlA = Math.round(optProfitsA[i]) + realizedA;
+        const pnlB = Math.round(optProfitsB[i]) + realizedB;
+        const pnlC = Math.round(optProfitsC[i]) + realizedC;
         const etfPnL = Math.round(etfProfits[i]);
-        // 總損益
+        // 總損益 = ETF損益 + 策略損益(含已實現) + 帳戶損益
         const totalPnLA = etfPnL + pnlA + accountPnL;
         const totalPnLB = etfPnL + pnlB + accountPnL;
         const totalPnLC = etfPnL + pnlC + accountPnL;
@@ -1080,6 +1115,18 @@ function handleSettingsChange() {
 
     updateUI();
     updateChart();
+    autoSave();
+}
+
+/**
+ * 處理已實現損益輸入變更
+ */
+function handleRealizedPnLChange() {
+    state.realizedPnL.A = parseFloat(elements.realizedPnLA?.value) || 0;
+    state.realizedPnL.B = parseFloat(elements.realizedPnLB?.value) || 0;
+    state.realizedPnL.C = parseFloat(elements.realizedPnLC?.value) || 0;
+
+    updateChart(); // 重新計算並更新表格
     autoSave();
 }
 
@@ -1408,7 +1455,8 @@ function autoSave() {
                 currentStrategy: state.currentStrategy,
                 optionPositions: state.strategies.A,
                 strategyB: { positions: state.strategies.B },
-                strategyC: { positions: state.strategies.C }
+                strategyC: { positions: state.strategies.C },
+                realizedPnL: state.realizedPnL
             });
 
             if (success) {

@@ -2576,3 +2576,45 @@ summary.section-title-summary h2 {
     color: #94a3b8;
     font-style: italic;
 }
+
+/* ======== Realized PnL Input ======== */
+.realized-pnl-row {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(148, 163, 184, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.realized-pnl-row label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.realized-pnl-input {
+    flex: 1;
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+    text-align: right;
+    transition: all var(--transition-fast);
+    max-width: 120px;
+}
+
+.realized-pnl-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.realized-pnl-input::-webkit-inner-spin-button,
+.realized-pnl-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
