@@ -53,7 +53,7 @@
 
             <div class="sidebar-content">
                 <!-- ETF Settings -->
-                <div class="sidebar-section">
+                <div class="sidebar-section" id="etf-summary">
                     <h3 class="sidebar-title">📊 00631L 庫存設定</h3>
                     <div class="form-group">
                         <label for="etf-lots">持有張數</label>
@@ -77,7 +77,7 @@
                         <label for="hedge-ratio">每張 ETF 避險口數</label>
                         <input type="number" id="hedge-ratio" value="0.2" step="0.01" min="0" max="1">
                     </div>
-                    <div class="suggested-hedge">
+                    <div class="suggested-hedge" id="hedge-suggestion">
                         <p class="suggested-label">📌 建議避險口數</p>
                         <p class="suggested-value" id="suggested-lots">0.0 口</p>
                         <p class="suggested-calc" id="suggested-calc"></p>
@@ -116,12 +116,31 @@
                     </div>
                 </div>
 
-                <!-- Firebase Status -->
-                <div class="sidebar-section firebase-status">
-                    <div class="status-indicator" id="firebase-status">
-                        <span class="status-dot"></span>
-                        <span class="status-text">未連線</span>
+                <!-- Firebase Settings -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">🔥 Firebase 設定</h3>
+
+                    <!-- Status -->
+                    <div class="firebase-status-row">
+                        <span>連線狀態:</span>
+                        <div class="status-indicator" id="firebase-status">
+                            <span class="status-dot"></span>
+                            <span class="status-text">未連線</span>
+                        </div>
                     </div>
+
+                    <!-- Config Input -->
+                    <div class="form-group mt-2">
+                        <label for="firebase-config-input">Firebase Config (JSON)</label>
+                        <textarea id="firebase-config-input" class="code-font" rows="5" placeholder='請貼上 Firebase Config JSON:
+{
+  "apiKey": "...",
+  "authDomain": "...",
+  "databaseURL": "..."
+}'></textarea>
+                    </div>
+                    <button class="btn btn-sm btn-primary btn-full" id="btn-save-firebase-config">💾 儲存並連線</button>
+                    <button class="btn btn-sm btn-secondary btn-full mt-1" id="btn-reset-firebase">🔄 重置預設值</button>
                 </div>
                 <!-- AI Settings -->
                 <div class="sidebar-section">
@@ -455,7 +474,7 @@
     <!-- Footer -->
     <footer class="footer">
         <p>💡 選擇權乘數: 50 元/點 | 00631L 槓桿: 2x</p>
-        <p>Version: <span id="app-version">V1.1.0</span> | 資料更新時間: <span id="update-time">--</span> | <span
+        <p>Version: <span id="app-version">V1.1.1</span> | 資料更新時間: <span id="update-time">--</span> | <span
                 id="save-status">--</span></p>
     </footer>
 
@@ -473,7 +492,7 @@
     <script src="js/calculator.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/firebase.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/app.js?v=1.1.1"></script>
 </body>
 
 </html>

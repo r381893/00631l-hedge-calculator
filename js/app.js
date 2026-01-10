@@ -139,6 +139,11 @@ function cacheElements() {
     elements.btnParseInventory = document.getElementById('btn-parse-inventory');
     elements.btnClearInventory = document.getElementById('btn-clear-inventory');
     elements.parseResults = document.getElementById('parse-results');
+
+    // Firebase Config
+    elements.firebaseConfigInput = document.getElementById('firebase-config-input');
+    elements.btnSaveFirebaseConfig = document.getElementById('btn-save-firebase-config');
+    elements.btnResetFirebase = document.getElementById('btn-reset-firebase');
     elements.parsedEtf = document.getElementById('parsed-etf');
     elements.parsedOptions = document.getElementById('parsed-options');
     elements.btnApplyParsed = document.getElementById('btn-apply-parsed');
@@ -207,6 +212,10 @@ function bindEvents() {
     elements.btnClearInventory?.addEventListener('click', handleClearInventory);
     elements.btnApplyParsed?.addEventListener('click', handleApplyParsed);
 
+    // Firebase Config
+    elements.btnSaveFirebaseConfig?.addEventListener('click', handleSaveFirebaseConfig);
+    elements.btnResetFirebase?.addEventListener('click', handleResetFirebaseConfig);
+
     // Image OCR
     elements.btnBrowseImage?.addEventListener('click', () => elements.imageUpload?.click());
     elements.imageUpload?.addEventListener('change', handleImageUpload);
@@ -227,6 +236,12 @@ async function initApp() {
     try {
         // 初始化 Firebase
         FirebaseModule.initFirebase();
+
+        // 載入當前 Firebase 設定到 UI
+        if (elements.firebaseConfigInput) {
+            const currentConfig = FirebaseModule.getCurrentConfig();
+            elements.firebaseConfigInput.value = JSON.stringify(currentConfig, null, 2);
+        }
 
         // 設定版本時間 (Static Build Time)
         if (elements.updateTime) {
@@ -450,6 +465,9 @@ function updateSidebarInputs() {
 /**
  * 更新建議避險口數
  */
+/**
+ * 更新建議避險口數
+ */
 function updateSuggestedHedge() {
     const suggested = state.etfLots * state.hedgeRatio;
     if (elements.suggestedLots) {
@@ -464,6 +482,12 @@ function updateSuggestedHedge() {
  * 更新 ETF 庫存摘要
  */
 function updateETFSummary() {
+    // 安全檢查：確保元素存在才操作 style
+    if (!elements.etfSummarySection) {
+        console.warn('DOM Element Missing: etfSummarySection');
+        return;
+    }
+
     if (state.etfLots <= 0) {
         elements.etfSummarySection.style.display = 'none';
         return;
@@ -479,21 +503,25 @@ function updateETFSummary() {
 
     if (!summary) return;
 
-    elements.statLots.textContent = `${summary.lots.toFixed(2)} 張`;
-    elements.statShares.textContent = `${summary.shares.toLocaleString()} 股`;
-    elements.statMarketValue.textContent = `${summary.marketValue.toLocaleString()} 元`;
-    elements.statCostValue.textContent = `${summary.costValue.toLocaleString()} 元`;
+    if (elements.statLots) elements.statLots.textContent = `${summary.lots.toFixed(2)} 張`;
+    if (elements.statShares) elements.statShares.textContent = `${summary.shares.toLocaleString()} 股`;
+    if (elements.statMarketValue) elements.statMarketValue.textContent = `${summary.marketValue.toLocaleString()} 元`;
+    if (elements.statCostValue) elements.statCostValue.textContent = `${summary.costValue.toLocaleString()} 元`;
 
-    const pnlClass = summary.unrealizedPnL >= 0 ? 'profit' : 'loss';
-    elements.statUnrealizedPnL.textContent = `${summary.unrealizedPnL >= 0 ? '+' : ''}${summary.unrealizedPnL.toLocaleString()} 元`;
-    elements.statUnrealizedPnL.className = 'stat-value ' + pnlClass;
-    elements.statPnLPct.textContent = `${summary.pnlPercent >= 0 ? '+' : ''}${summary.pnlPercent.toFixed(2)}%`;
+    if (elements.statUnrealizedPnL) {
+        const pnlClass = summary.unrealizedPnL >= 0 ? 'profit' : 'loss';
+        elements.statUnrealizedPnL.textContent = `${summary.unrealizedPnL >= 0 ? '+' : ''}${summary.unrealizedPnL.toLocaleString()} 元`;
+        elements.statUnrealizedPnL.className = 'stat-value ' + pnlClass;
+    }
+    if (elements.statPnLPct) elements.statPnLPct.textContent = `${summary.pnlPercent >= 0 ? '+' : ''}${summary.pnlPercent.toFixed(2)}%`;
 
     // 更新避險建議
     const suggestion = state.etfLots * state.hedgeRatio;
-    const suggestionText = elements.hedgeSuggestion.querySelector('.suggestion-text');
-    if (suggestionText) {
-        suggestionText.innerHTML = `持有 ${state.etfLots.toFixed(2)} 張，建議買入 <b>${suggestion.toFixed(1)} 口</b> 賣權進行保護`;
+    if (elements.hedgeSuggestion) {
+        const suggestionText = elements.hedgeSuggestion.querySelector('.suggestion-text');
+        if (suggestionText) {
+            suggestionText.innerHTML = `持有 ${state.etfLots.toFixed(2)} 張，建議買入 <b>${suggestion.toFixed(1)} 口</b> 賣權進行保護`;
+        }
     }
 }
 
@@ -2123,3 +2151,40 @@ function handleCopyStrategy() {
 }
 
 
+
+/**
+ * 處理儲存 Firebase 設定
+ */
+function handleSaveFirebaseConfig() {
+    try {
+        const configStr = elements.firebaseConfigInput.value.trim();
+        if (!configStr) {
+            showToast('warning', '請輸入設定內容');
+            return;
+        }
+
+        const config = JSON.parse(configStr);
+        if (FirebaseModule.saveUserConfig(config)) {
+            showToast('success', '設定已儲存，正在重新連線...');
+            // 重新初始化
+            FirebaseModule.initFirebase(config);
+            // 延遲重整以確保完全生效
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('error', '儲存失敗');
+        }
+    } catch (e) {
+        showToast('error', '設定格式錯誤 (必須是有效 JSON)');
+        console.error(e);
+    }
+}
+
+/**
+ * 處理重置 Firebase 設定
+ */
+function handleResetFirebaseConfig() {
+    if (confirm('確定要重置為預設 Firebase 設定嗎？網頁將會重新整理。')) {
+        FirebaseModule.resetConfig();
+        window.location.reload();
+    }
+}

@@ -3,8 +3,8 @@
  * 處理資料儲存和即時同步
  */
 
-// Firebase 設定
-const FIREBASE_CONFIG = {
+// 預設 Firebase 設定 (若使用者未設定時使用)
+const DEFAULT_FIREBASE_CONFIG = {
     apiKey: "AIzaSyCXZXIYFKOejwegXD1n_E1N5SCWr7Unpxw",
     authDomain: "hedge-option-tool.firebaseapp.com",
     databaseURL: "https://hedge-option-tool-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -14,6 +14,9 @@ const FIREBASE_CONFIG = {
     appId: "1:341937921876:web:3706db8f1f61554525f2c1",
     measurementId: "G-LG609LN6XT"
 };
+
+// 目前使用的設定
+let currentConfig = null;
 
 // Firebase 實例
 let firebaseApp = null;
@@ -41,25 +44,53 @@ const DEFAULT_DATA = {
 
 /**
  * 初始化 Firebase
- * @param {Object} config - Firebase 設定（可選，使用預設設定）
+ * @param {Object} config - Firebase 設定（可選）
  * @returns {boolean} 是否成功初始化
  */
 function initFirebase(config = null) {
     try {
-        const finalConfig = config || FIREBASE_CONFIG;
+        // 1. 優先使用傳入的 config
+        // 2. 其次嘗試讀取 LocalStorage
+        // 3. 最後使用預設值
+        let configToUse = config;
 
-        // 檢查設定是否有效
-        if (finalConfig.apiKey === "YOUR_API_KEY") {
-            console.warn('Firebase 尚未設定，使用本地儲存模式');
-            updateConnectionStatus(false, '本地模式');
-            return false;
+        if (!configToUse) {
+            const storedConfig = localStorage.getItem('user_firebase_config');
+            if (storedConfig) {
+                try {
+                    configToUse = JSON.parse(storedConfig);
+                    console.log('使用儲存的 Firebase 設定');
+                } catch (e) {
+                    console.error('儲存的設定格式錯誤', e);
+                }
+            }
         }
 
-        // 初始化 Firebase
-        if (!firebaseApp) {
-            firebaseApp = firebase.initializeApp(finalConfig);
-            database = firebase.database();
+        if (!configToUse) {
+            configToUse = DEFAULT_FIREBASE_CONFIG;
+            console.log('使用預設 Firebase 設定');
         }
+
+        currentConfig = configToUse;
+
+        // 如果已經初始化過且設定不同，需要重新初始化 (Firebase SDK 不支援直接切換，通常需要 deleteApp)
+        // 這裡簡化處理：如果已經有 app 且設定改變，提示重新整理
+        if (firebaseApp) {
+            console.warn('Firebase 已初始化，重新連線需要重新整理網頁');
+            // 嘗試切換 (對於簡單的 web sdk，有時直接重設可能會有問題，但在這裡我們主要關注 database)
+            // 由於 firebase.initializeApp 是單例模式，若要切換專案較麻煩
+            // 建議操作後 reload 頁面
+        }
+
+        // 初始化 Firebase (防止重複初始化)
+        if (!firebase.apps.length) {
+            firebaseApp = firebase.initializeApp(configToUse);
+        } else {
+            // 如果已存在，使用現有的 (注意：這可能導致無法即時切換設定，除非 reload)
+            firebaseApp = firebase.app();
+        }
+
+        database = firebase.database();
 
         // 監聽連線狀態
         const connectedRef = firebase.database().ref('.info/connected');
@@ -68,13 +99,51 @@ function initFirebase(config = null) {
             updateConnectionStatus(isConnected, isConnected ? '已連線' : '離線');
         });
 
-        console.log('Firebase 初始化成功');
+        console.log('Firebase 初始化成功, URL:', configToUse.databaseURL);
         return true;
     } catch (error) {
         console.error('Firebase 初始化失敗:', error);
-        updateConnectionStatus(false, '連線失敗');
+        updateConnectionStatus(false, '連線失敗: ' + error.message);
         return false;
     }
+}
+
+/**
+ * 儲存使用者自訂的 Firebase 設定
+ * @param {Object} configJson 
+ */
+function saveUserConfig(configJson) {
+    try {
+        // 驗證是否有基本欄位
+        if (!configJson.databaseURL) {
+            throw new Error('設定缺少 databaseURL');
+        }
+        localStorage.setItem('user_firebase_config', JSON.stringify(configJson));
+        return true;
+    } catch (e) {
+        console.error('儲存設定失敗', e);
+        return false;
+    }
+}
+
+/**
+ * 重置為預設設定
+ */
+function resetConfig() {
+    localStorage.removeItem('user_firebase_config');
+    // 需要 reload 才能生效
+}
+
+/**
+ * 取得目前設定 (用於顯示在 UI)
+ */
+function getCurrentConfig() {
+    // 優先回傳 localStorage 的，代表使用者的設定
+    const stored = localStorage.getItem('user_firebase_config');
+    if (stored) return JSON.parse(stored);
+
+    // 否則回傳預設值
+    return DEFAULT_FIREBASE_CONFIG;
 }
 
 /**
@@ -300,5 +369,8 @@ window.FirebaseModule = {
     exportDataAsJSON,
     importDataFromJSON,
     getUserId,
+    saveUserConfig,
+    resetConfig,
+    getCurrentConfig,
     isConnected: () => isConnected
 };
