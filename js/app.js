@@ -455,11 +455,27 @@ function updateHeaderPrices() {
  * 更新側邊欄輸入值
  */
 function updateSidebarInputs() {
-    if (elements.etfLotsInput) elements.etfLotsInput.value = state.etfLots;
-    if (elements.etfCostInput) elements.etfCostInput.value = state.etfCost;
-    if (elements.etfCurrentInput) elements.etfCurrentInput.value = state.etfCurrentPrice;
-    if (elements.hedgeRatioInput) elements.hedgeRatioInput.value = state.hedgeRatio;
-    if (elements.priceRangeInput) elements.priceRangeInput.value = state.priceRange;
+    if (elements.etfLotsInput && document.activeElement !== elements.etfLotsInput) {
+        elements.etfLotsInput.value = state.etfLots;
+    }
+    if (elements.etfCostInput && document.activeElement !== elements.etfCostInput) {
+        elements.etfCostInput.value = state.etfCost;
+    }
+    if (elements.etfCurrentInput && document.activeElement !== elements.etfCurrentInput) {
+        elements.etfCurrentInput.value = state.etfCurrentPrice;
+    }
+    if (elements.hedgeRatioInput && document.activeElement !== elements.hedgeRatioInput) {
+        elements.hedgeRatioInput.value = state.hedgeRatio;
+    }
+    if (elements.priceRangeInput && document.activeElement !== elements.priceRangeInput) {
+        elements.priceRangeInput.value = state.priceRange;
+    }
+    if (elements.accountCostInput && document.activeElement !== elements.accountCostInput) {
+        elements.accountCostInput.value = state.accountCost;
+    }
+    if (elements.accountBalanceInput && document.activeElement !== elements.accountBalanceInput) {
+        elements.accountBalanceInput.value = state.accountBalance;
+    }
 }
 
 /**
@@ -693,54 +709,63 @@ function createPositionItem(pos, index, strategy = 'A') {
         div.style.opacity = '0.5';
     }
 
+    // 1. Badge Logic (Merged)
+    let badgeHTML = '';
     if (isFutures) {
-        tagsHTML = `
-            <span class="position-tag tag-product">微台期貨</span>
-            <span class="position-tag tag-sell">做空</span>
-        `;
+        // Futures: Always Sell for this app? Or depends on logic. 
+        // Logic says: `pos.product === '微台期貨'` or Type=Futures. Hardcoded `tag-sell` "做空" in original.
+        // Let's stick to original text but unified badge style.
+        badgeHTML = `<span class="pos-badge badge-sell">微台·空</span>`;
+    } else {
+        const isBuy = pos.direction === '買進';
+        const isCall = pos.type === 'Call';
+        const actionText = isBuy ? '買' : '賣';
+        const typeText = isCall ? 'Call' : 'Put'; // Or 買權/賣權 if space permits. User suggested "賣·Call"
+        const badgeClass = isBuy ? 'badge-buy' : 'badge-sell';
+
+        // Ex: "買·Call" or "賣·Put"
+        badgeHTML = `<span class="pos-badge ${badgeClass}">${actionText}·${typeText}</span>`;
+    }
+
+    // 2. Details (Strike, Stepper, Price)
+    // Structure: [Strike] [Stepper] [Price]
+    if (isFutures) {
         detailsHTML = `
-            <span class="position-strike">進場 ${pos.strike.toLocaleString()}</span>
-            <span class="position-lots-stepper">
+            <span class="pos-strike">進場 ${pos.strike.toLocaleString()}</span>
+            <div class="pos-stepper">
                 <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>−</button>
                 <span class="lots-value">${pos.lots}</span>
                 <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>+</button>
-                <span class="lots-unit">口</span>
-            </span>
+            </div>
         `;
     } else {
-        const typeClass = pos.type === 'Call' ? 'tag-call' : 'tag-put';
-        const typeLabel = pos.type === 'Call' ? '買權' : '賣權';
-        const dirClass = pos.direction === '買進' ? 'tag-buy' : 'tag-sell';
-
-        tagsHTML = `
-            <span class="position-tag ${dirClass}">${pos.direction}</span>
-            <span class="position-tag ${typeClass}">${typeLabel}</span>
-        `;
         detailsHTML = `
-            <span class="position-strike">${pos.strike.toLocaleString()}</span>
-            <span class="position-lots-stepper">
+            <span class="pos-strike">${pos.strike.toLocaleString()}</span>
+            <div class="pos-stepper">
                 <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>−</button>
                 <span class="lots-value">${pos.lots}</span>
                 <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>+</button>
-            </span>
-            <span>@${pos.premium}點</span>
+            </div>
+            <span class="pos-price">${pos.premium}</span>
         `;
     }
 
     div.innerHTML = `
-        <div class="position-header">
-            <div class="position-left">
-                <div class="position-select">
-                    <input type="checkbox" class="pos-select-check" data-index="${index}" data-strategy="${strategy}" ${isSelected ? 'checked' : ''}>
-                </div>
-                ${groupBadge}
-                <div class="position-info">
-                    ${tagsHTML}
-                    ${detailsHTML}
-                </div>
+        <div class="position-row-content">
+            <div class="pos-col-check">
+                <input type="checkbox" class="pos-select-check" data-index="${index}" data-strategy="${strategy}" ${isSelected ? 'checked' : ''}>
             </div>
-            <div class="position-actions">
-                <button class="position-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">🗑️</button>
+            
+            <div class="pos-col-badge">
+                ${badgeHTML}
+            </div>
+
+            <div class="pos-col-main">
+                ${detailsHTML}
+            </div>
+            
+            <div class="pos-col-delete">
+                 <button class="icon-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">✕</button>
             </div>
         </div>
     `;
@@ -2145,5 +2170,130 @@ function handleResetFirebaseConfig() {
     if (confirm('確定要重置為預設 Firebase 設定嗎？網頁將會重新整理。')) {
         FirebaseModule.resetConfig();
         window.location.reload();
+    }
+}
+
+// ======== AI 策略分析功能 ========
+
+function bindAIEvents() {
+    elements.btnAiAnalysis = document.getElementById('btn-ai-analysis');
+    elements.aiLoading = document.getElementById('ai-loading');
+    elements.aiResultCard = document.getElementById('ai-result-card');
+    elements.btnCloseAi = document.getElementById('btn-close-ai');
+    elements.aiResultContent = document.getElementById('ai-result-content');
+    elements.aiApiKey = document.getElementById('ai-api-key');
+    // elements.aiModel = document.getElementById('ai-model'); // Model selection removed/hidden
+
+    elements.btnAiAnalysis?.addEventListener('click', handleAIAnalysis);
+    elements.btnCloseAi?.addEventListener('click', () => {
+        if (elements.aiResultCard) elements.aiResultCard.style.display = 'none';
+    });
+}
+
+// 請在這裡填入您的 API Key，就不用每次在網頁上輸入了！
+const HARDCODED_API_KEY = '';
+
+/**
+ * 執行 AI 策略分析
+ */
+async function handleAIAnalysis() {
+    // 優先使用寫死在程式碼的 Key，如果沒有才看網頁輸入框
+    const apiKey = HARDCODED_API_KEY || elements.aiApiKey?.value.trim() || '';
+
+    if (!apiKey) {
+        showToast('error', '請先在程式碼中填入 API Key，或在側邊欄輸入');
+        // Open sidebar if closed
+        if (!elements.sidebar.classList.contains('open')) {
+            toggleSidebar();
+        }
+        elements.aiApiKey?.focus();
+        return;
+    }
+
+    // 準備資料
+    const strategyData = {
+        tseIndex: state.tseIndex,
+        etf: {
+            price: state.etfCurrentPrice,
+            lots: state.etfLots,
+            cost: state.etfCost
+        },
+        positions: state.strategies[state.currentStrategy], // Use current strategy
+        account: {
+            balance: state.accountBalance,
+            cost: state.accountCost
+        },
+        view: {
+            priceRange: state.priceRange
+        }
+    };
+
+    // 顯示 Loading
+    elements.btnAiAnalysis.disabled = true;
+    if (elements.aiLoading) elements.aiLoading.style.display = 'block';
+    if (elements.aiResultCard) elements.aiResultCard.style.display = 'none';
+
+    try {
+        const prompt = `
+你是一位專業的選擇權避險策略分析師。請根據以下資料進行詳細診斷與建議：
+
+**市場數據**：
+- 加權指數：${strategyData.tseIndex}
+- 00631L 現價：${strategyData.etf.price}
+
+**投資組合 (00631L + 選擇權避險)**：
+- 00631L 持倉：${strategyData.etf.lots} 張 (成本 ${strategyData.etf.cost})
+- 當前策略 (${state.currentStrategy}) 選擇權倉位：
+${strategyData.positions.map(p => `- ${p.direction} ${p.type} ${p.strike} @ ${p.premium} (${p.lots}口)`).join('\n') || '(無倉位)'}
+
+**請分析以下重點**：
+1.  **避險效力評估**：目前的選擇權部位是否能有效保護 00631L 下跌風險？
+2.  **損益平衡點**：大約在加權指數多少點位是損益兩平？
+3.  **風險提示**：如果有突發大漲或大跌，此組合的最大風險是什麼？
+4.  **調整建議**：針對目前的部位，建議如何調整（加倉、平倉、或移動履約價）？
+
+請用繁體中文回答，使用 Markdown 格式（條列式重點），語氣專業但易懂。
+`;
+
+        // Call Gemini API
+        // 改用 gemini-1.5-flash-001 (特定版本號較穩定)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: prompt }]
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error?.message || 'API 請求失敗');
+        }
+
+        const data = await response.json();
+        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (aiText) {
+            // Render Result
+            if (elements.aiResultCard) elements.aiResultCard.style.display = 'block';
+            if (elements.aiResultContent) {
+                // Use marked to parse markdown
+                elements.aiResultContent.innerHTML = marked.parse(aiText);
+            }
+            showToast('success', 'AI 分析完成');
+        } else {
+            throw new Error('模型未回傳內容');
+        }
+
+    } catch (error) {
+        console.error('AI Error:', error);
+        showToast('error', 'AI 分析失敗: ' + error.message);
+    } finally {
+        elements.btnAiAnalysis.disabled = false;
+        if (elements.aiLoading) elements.aiLoading.style.display = 'none';
     }
 }
