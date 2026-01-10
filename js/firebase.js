@@ -376,5 +376,19 @@ window.FirebaseModule = {
     saveUserConfig,
     resetConfig,
     getCurrentConfig,
-    isConnected: () => isConnected
+    checkConnection: async () => {
+        if (!database) return { success: false, message: 'Firebase 未初始化' };
+        try {
+            const snap = await database.ref('.info/connected').once('value');
+            if (snap.val() === true) {
+                return { success: true, message: '連線成功！' };
+            } else {
+                return { success: false, message: '無法連線到伺服器 (請檢查網路或 Config)' };
+            }
+        } catch (e) {
+            return { success: false, message: '測試發生錯誤: ' + e.message };
+        }
+    },
+    isConnected: () => isConnected,
+    DEFAULT_CONFIG: DEFAULT_FIREBASE_CONFIG
 };

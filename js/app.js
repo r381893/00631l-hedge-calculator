@@ -148,6 +148,7 @@ function cacheElements() {
     elements.firebaseConfigInput = document.getElementById('firebase-config-input');
     elements.btnSaveFirebaseConfig = document.getElementById('btn-save-firebase-config');
     elements.btnResetFirebase = document.getElementById('btn-reset-firebase');
+    elements.btnTestFirebase = document.getElementById('btn-test-firebase');
     elements.parsedEtf = document.getElementById('parsed-etf');
     elements.parsedOptions = document.getElementById('parsed-options');
     elements.btnApplyParsed = document.getElementById('btn-apply-parsed');
@@ -219,6 +220,7 @@ function bindEvents() {
     // Firebase Config
     elements.btnSaveFirebaseConfig?.addEventListener('click', handleSaveFirebaseConfig);
     elements.btnResetFirebase?.addEventListener('click', handleResetFirebaseConfig);
+    elements.btnTestFirebase?.addEventListener('click', handleTestFirebaseConnection);
 
     // Image OCR
     elements.btnBrowseImage?.addEventListener('click', () => elements.imageUpload?.click());
@@ -243,7 +245,11 @@ async function initApp() {
 
         // 載入當前 Firebase 設定到 UI
         if (elements.firebaseConfigInput) {
-            const currentConfig = FirebaseModule.getCurrentConfig();
+            let currentConfig = FirebaseModule.getCurrentConfig();
+            // 如果當前設定是空的 (防呆)，使用預設值
+            if (!currentConfig || Object.keys(currentConfig).length === 0) {
+                currentConfig = FirebaseModule.DEFAULT_CONFIG;
+            }
             elements.firebaseConfigInput.value = JSON.stringify(currentConfig, null, 2);
         }
 
@@ -504,7 +510,7 @@ function updateSuggestedHedge() {
 function updateETFSummary() {
     // 安全檢查：確保元素存在才操作 style
     if (!elements.etfSummarySection) {
-        console.warn('DOM Element Missing: etfSummarySection');
+        // 元素已從 HTML 移除，靜默跳過
         return;
     }
 
@@ -2330,7 +2336,31 @@ function handleSaveFirebaseConfig() {
 function handleResetFirebaseConfig() {
     if (confirm('確定要重置為預設 Firebase 設定嗎？網頁將會重新整理。')) {
         FirebaseModule.resetConfig();
+        // 立即更新 UI 以顯示預設值 (不必等 reload)
+        if (elements.firebaseConfigInput && FirebaseModule.DEFAULT_CONFIG) {
+            elements.firebaseConfigInput.value = JSON.stringify(FirebaseModule.DEFAULT_CONFIG, null, 2);
+        }
         window.location.reload();
+    }
+}
+
+// ======== AI 策略分析功能 ========
+
+/**
+ * 處理測試 Firebase 連線
+ */
+async function handleTestFirebaseConnection() {
+    showToast('info', '正在測試連線...');
+    const result = await FirebaseModule.checkConnection();
+
+    if (result.success) {
+        showToast('success', result.message);
+    } else {
+        showToast('error', result.message);
+        // 如果失敗，嘗試顯示更多資訊
+        if (result.message.includes('Config')) {
+            alert('連線失敗，請檢查 Firebase Config 是否正確。\n\n錯誤訊息: ' + result.message);
+        }
     }
 }
 
@@ -2360,38 +2390,33 @@ function bindAIEvents() {
  * 綁定 AI 庫存判讀相關事件 (功能已移除)
  */
 function bindInventoryEvents() {
-    // 功能已移除
-}
+    // 拖曳上傳
+    elements.imageUploadArea?.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.imageUploadArea.classList.add('dragover');
+    });
+
+    elements.imageUploadArea?.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        elements.imageUploadArea.classList.remove('dragover');
+    });
+
+    elements.imageUploadArea?.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.imageUploadArea.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            processImageFile(e.dataTransfer.files[0]);
         }
     });
 
-// 拖曳上傳
-elements.imageUploadArea?.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    elements.imageUploadArea.classList.add('dragover');
-});
+    elements.btnOcrRecognize?.addEventListener('click', handleOcrRecognize);
+    elements.btnClearImage?.addEventListener('click', handleClearImage);
 
-elements.imageUploadArea?.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    elements.imageUploadArea.classList.remove('dragover');
-});
-
-elements.imageUploadArea?.addEventListener('drop', (e) => {
-    e.preventDefault();
-    elements.imageUploadArea.classList.remove('dragover');
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        processImageFile(e.dataTransfer.files[0]);
-    }
-});
-
-elements.btnOcrRecognize?.addEventListener('click', handleOcrRecognize);
-elements.btnClearImage?.addEventListener('click', handleClearImage);
-
-elements.btnParseInventory?.addEventListener('click', handleParseInventory);
-elements.btnClearInventory?.addEventListener('click', () => {
-    if (elements.inventoryText) elements.inventoryText.value = '';
-    if (elements.parseResults) elements.parseResults.style.display = 'none';
-});
+    elements.btnParseInventory?.addEventListener('click', handleParseInventory);
+    elements.btnClearInventory?.addEventListener('click', () => {
+        if (elements.inventoryText) elements.inventoryText.value = '';
+        if (elements.parseResults) elements.parseResults.style.display = 'none';
+    });
 }
 
 // 請在這裡填入您的 API Key，就不用每次在網頁上輸入了！

@@ -118,9 +118,9 @@
 
                 <!-- Firebase Settings -->
                 <div class="sidebar-section">
-                    <h3 class="sidebar-title">🔥 Firebase 設定</h3>
+                    <h3 class="sidebar-title">🔥 Firebase</h3>
 
-                    <!-- Status -->
+                    <!-- Status Only -->
                     <div class="firebase-status-row">
                         <span>連線狀態:</span>
                         <div class="status-indicator" id="firebase-status">
@@ -129,18 +129,13 @@
                         </div>
                     </div>
 
-                    <!-- Config Input -->
-                    <div class="form-group mt-2">
-                        <label for="firebase-config-input">Firebase Config (JSON)</label>
-                        <textarea id="firebase-config-input" class="code-font" rows="5" placeholder='請貼上 Firebase Config JSON:
-{
-  "apiKey": "...",
-  "authDomain": "...",
-  "databaseURL": "..."
-}'></textarea>
+                    <!-- Hidden Config (for advanced users, can be shown via dev tools) -->
+                    <div style="display: none;">
+                        <textarea id="firebase-config-input"></textarea>
+                        <button id="btn-save-firebase-config"></button>
+                        <button id="btn-reset-firebase"></button>
+                        <button id="btn-test-firebase"></button>
                     </div>
-                    <button class="btn btn-sm btn-primary btn-full" id="btn-save-firebase-config">💾 儲存並連線</button>
-                    <button class="btn btn-sm btn-secondary btn-full mt-1" id="btn-reset-firebase">🔄 重置預設值</button>
                 </div>
                 <!-- AI Settings -->
                 <div class="sidebar-section">
