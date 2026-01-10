@@ -161,6 +161,7 @@ function cacheElements() {
     elements.btnSaveFirebaseConfig = document.getElementById('btn-save-firebase-config');
     elements.btnResetFirebase = document.getElementById('btn-reset-firebase');
     elements.btnTestFirebase = document.getElementById('btn-test-firebase');
+    elements.btnCopySyncLink = document.getElementById('btn-copy-sync-link');
     elements.parsedEtf = document.getElementById('parsed-etf');
     elements.parsedOptions = document.getElementById('parsed-options');
     elements.btnApplyParsed = document.getElementById('btn-apply-parsed');
@@ -238,6 +239,7 @@ function bindEvents() {
     elements.btnSaveFirebaseConfig?.addEventListener('click', handleSaveFirebaseConfig);
     elements.btnResetFirebase?.addEventListener('click', handleResetFirebaseConfig);
     elements.btnTestFirebase?.addEventListener('click', handleTestFirebaseConnection);
+    elements.btnCopySyncLink?.addEventListener('click', handleCopySyncLink);
 
     // Image OCR
     elements.btnBrowseImage?.addEventListener('click', () => elements.imageUpload?.click());
@@ -2414,6 +2416,26 @@ async function handleTestFirebaseConnection() {
         if (result.message.includes('Config')) {
             alert('連線失敗，請檢查 Firebase Config 是否正確。\n\n錯誤訊息: ' + result.message);
         }
+    }
+}
+
+/**
+ * 處理複製同步連結
+ */
+async function handleCopySyncLink() {
+    try {
+        const syncUrl = FirebaseModule.getSyncUrl();
+        await navigator.clipboard.writeText(syncUrl);
+        showToast('success', '已複製同步連結！在其他裝置開啟即可同步資料');
+    } catch (e) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = FirebaseModule.getSyncUrl();
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('success', '已複製同步連結！');
     }
 }
 

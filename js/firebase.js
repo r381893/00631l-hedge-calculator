@@ -167,16 +167,39 @@ function updateConnectionStatus(connected, message) {
 }
 
 /**
- * 取得使用者 ID（使用裝置識別或匿名 ID）
+ * 取得使用者 ID
+ * 優先順序：URL 參數 > localStorage > 自動產生
  * @returns {string} 使用者 ID
  */
 function getUserId() {
+    // 1. 優先檢查 URL 參數 (?uid=xxx)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlUid = urlParams.get('uid');
+    if (urlUid) {
+        // 同時儲存到 localStorage，這樣下次不用再帶參數
+        localStorage.setItem('hedge_user_id', urlUid);
+        return urlUid;
+    }
+
+    // 2. 從 localStorage 讀取
     let userId = localStorage.getItem('hedge_user_id');
     if (!userId) {
+        // 3. 自動產生新 ID
         userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('hedge_user_id', userId);
     }
     return userId;
+}
+
+/**
+ * 取得可分享的同步連結
+ * @returns {string} 帶有 uid 參數的完整 URL
+ */
+function getSyncUrl() {
+    const userId = getUserId();
+    const url = new URL(window.location.href);
+    url.searchParams.set('uid', userId);
+    return url.toString();
 }
 
 /**
@@ -390,5 +413,6 @@ window.FirebaseModule = {
         }
     },
     isConnected: () => isConnected,
-    DEFAULT_CONFIG: DEFAULT_FIREBASE_CONFIG
+    DEFAULT_CONFIG: DEFAULT_FIREBASE_CONFIG,
+    getSyncUrl
 };
