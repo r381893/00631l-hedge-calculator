@@ -230,7 +230,7 @@ async function initApp() {
 
         // 設定版本時間 (Static Build Time)
         if (elements.updateTime) {
-            elements.updateTime.textContent = '2026-01-10 10:55';
+            elements.updateTime.textContent = '2026-01-10 11:21';
         }
 
         // 載入資料
@@ -796,16 +796,44 @@ function handlePositionCloseToggle(e) {
 /**
  * 處理平倉價格輸入
  */
+// 防抖動 UI 更新 (避免輸入時焦點跳掉)
+let updateUITimeout;
+function debounceUpdateUI() {
+    clearTimeout(updateUITimeout);
+    updateUITimeout = setTimeout(() => {
+        updateUI();
+    }, 1500);
+}
+
+/**
+ * 處理平倉價格輸入
+ */
 function handlePositionClosePrice(e) {
     const index = parseInt(e.target.dataset.index);
     const strategy = e.target.dataset.strategy;
-    const price = parseFloat(e.target.value);
+    const value = e.target.value; // Keep as string first
+    const price = parseFloat(value);
 
     const positions = state.strategies[strategy];
     if (positions && positions[index]) {
-        positions[index].closePrice = price;
-        updateUI(); // 即時更新損益
-        saveDataDebounced(); // 延遲儲存
+        positions[index].closePrice = price; // Save internal numeric value
+
+        // 1. 即時更新該卡片的損益顯示 (不重繪整個列表)
+        const closeInfo = e.target.closest('.close-info');
+        if (closeInfo) {
+            const pnlElement = closeInfo.querySelector('.realized-pnl');
+            if (pnlElement && !isNaN(price)) {
+                // 使用 Calculator 類別計算 (需確保 scope 正確)
+                const realizedPnL = Calculator.calcRealizedPnL(positions[index], price);
+                const pnlSign = realizedPnL >= 0 ? '+' : '';
+                pnlElement.textContent = `${pnlSign}${realizedPnL.toLocaleString()}`;
+                pnlElement.className = `realized-pnl ${realizedPnL >= 0 ? 'profit' : 'loss'}`;
+            }
+        }
+
+        // 2. 延遲更新整體 UI (總計等)
+        debounceUpdateUI();
+        saveDataDebounced();
     }
 }
 
