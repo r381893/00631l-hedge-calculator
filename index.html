@@ -168,27 +168,29 @@
                     </div>
                 </div>
 
-                <!-- AI Analysis Result -->
-                <div id="ai-result-card" class="card mt-3" style="display: none;">
-                    <div class="result-header">
-                        <h3>🤖 診斷報告</h3>
-                        <button class="btn-close-result" id="btn-close-ai">✕</button>
-                    </div>
-                    <div id="ai-result-content" class="markdown-content"></div>
-                </div>
-            </section>
-            <div class="copy-arrow">➔</div>
-            <div class="copy-group">
-                <label for="copy-target">複製到 (目標):</label>
-                <select id="copy-target" class="form-select">
-                    <option value="B" selected>🔵 策略 B</option>
-                    <option value="A">🔴 策略 A</option>
-                    <option value="C">🟢 策略 C</option>
-                </select>
-            </div>
-            <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
-            <span class="copy-hint" id="copy-hint">⚠️ 將覆蓋目標策略</span>
     </div>
+
+    <!-- AI Analysis Result -->
+    <div id="ai-result-card" class="card mt-3" style="display: none;">
+        <div class="result-header">
+            <h3>🤖 診斷報告</h3>
+            <button class="btn-close-result" id="btn-close-ai">✕</button>
+        </div>
+        <div id="ai-result-content" class="markdown-content"></div>
+    </div>
+    <!-- Removed stray /section here to keep Copy Controls inside -->
+    <div class="copy-arrow">➔</div>
+    <div class="copy-group">
+        <label for="copy-target">複製到 (目標):</label>
+        <select id="copy-target" class="form-select">
+            <option value="B" selected>🔵 策略 B</option>
+            <option value="A">🔴 策略 A</option>
+            <option value="C">🟢 策略 C</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
+    <span class="copy-hint" id="copy-hint">⚠️ 將覆蓋目標策略</span>
+    </div> <!-- Closes copy-controls wrapper if it exists? No, checking logic -->
     </section>
 
     <!-- Add Position Section -->
