@@ -168,288 +168,288 @@
                     </div>
                 </div>
 
-    </div>
 
-    <!-- AI Analysis Result -->
-    <div id="ai-result-card" class="card mt-3" style="display: none;">
-        <div class="result-header">
-            <h3>🤖 診斷報告</h3>
-            <button class="btn-close-result" id="btn-close-ai">✕</button>
-        </div>
-        <div id="ai-result-content" class="markdown-content"></div>
-    </div>
-    <!-- Removed stray /section here to keep Copy Controls inside -->
-    <div class="copy-arrow">➔</div>
-    <div class="copy-group">
-        <label for="copy-target">複製到 (目標):</label>
-        <select id="copy-target" class="form-select">
-            <option value="B" selected>🔵 策略 B</option>
-            <option value="A">🔴 策略 A</option>
-            <option value="C">🟢 策略 C</option>
-        </select>
-    </div>
-    <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
-    <span class="copy-hint" id="copy-hint">⚠️ 將覆蓋目標策略</span>
 
-    </section>
-
-    <!-- Add Position Section -->
-    <section class="card" id="add-position-card">
-        <h2 class="section-title">➕ 新增倉位</h2>
-
-        <div class="tab-group">
-            <button class="tab active" data-product="Option">選擇權 (Option)</button>
-            <button class="tab" data-product="Futures">微台 (Futures)</button>
-        </div>
-
-        <!-- Option Form -->
-        <div id="option-form" class="position-form">
-            <div class="compact-form-grid">
-                <!-- Row 1 Items -->
-                <div class="form-group">
-                    <label>權利 (Type)</label>
-                    <select id="opt-type">
-                        <option value="Call">Call (買權)</option>
-                        <option value="Put">Put (賣權)</option>
+                <!-- AI Analysis Result -->
+                <div id="ai-result-card" class="card mt-3" style="display: none;">
+                    <div class="result-header">
+                        <h3>🤖 診斷報告</h3>
+                        <button class="btn-close-result" id="btn-close-ai">✕</button>
+                    </div>
+                    <div id="ai-result-content" class="markdown-content"></div>
+                </div>
+                <!-- Removed stray /section here to keep Copy Controls inside -->
+                <div class="copy-arrow">➔</div>
+                <div class="copy-group">
+                    <label for="copy-target">複製到 (目標):</label>
+                    <select id="copy-target" class="form-select">
+                        <option value="B" selected>🔵 策略 B</option>
+                        <option value="A">🔴 策略 A</option>
+                        <option value="C">🟢 策略 C</option>
                     </select>
                 </div>
+                <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
+                <span class="copy-hint" id="copy-hint">⚠️ 將覆蓋目標策略</span>
 
-                <div class="form-group">
-                    <label>買賣方向</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="opt-direction" value="買進" checked>
-                            <span>Buy</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="opt-direction" value="賣出">
-                            <span>Sell</span>
-                        </label>
+            </section>
+
+            <!-- Add Position Section -->
+            <section class="card" id="add-position-card">
+                <h2 class="section-title">➕ 新增倉位</h2>
+
+                <div class="tab-group">
+                    <button class="tab active" data-product="Option">選擇權 (Option)</button>
+                    <button class="tab" data-product="Futures">微台 (Futures)</button>
+                </div>
+
+                <!-- Option Form -->
+                <div id="option-form" class="position-form">
+                    <div class="compact-form-grid">
+                        <!-- Row 1 Items -->
+                        <div class="form-group">
+                            <label>權利 (Type)</label>
+                            <select id="opt-type">
+                                <option value="Call">Call (買權)</option>
+                                <option value="Put">Put (賣權)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>買賣方向</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="opt-direction" value="買進" checked>
+                                    <span>Buy</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="opt-direction" value="賣出">
+                                    <span>Sell</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>履約價 (Strike)</label>
+                            <input type="number" id="opt-strike" step="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label>口數 (Lots)</label>
+                            <input type="number" id="opt-lots" value="1" min="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label>成交價 (Premium)</label>
+                            <input type="number" id="opt-premium" step="0.5" min="0">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="btn-add-option">新增選擇權倉位</button>
+
+                    <!-- Strike Picker -->
+                    <div id="strike-picker-grid" class="mt-4"></div>
+                </div>
+
+                <!-- Futures Form -->
+                <div id="futures-form" class="position-form" style="display: none;">
+                    <div class="alert-info mb-3">
+                        💡 微台期貨固定為 <strong>做空 (Sell)</strong> 用於避險
+                    </div>
+                    <div class="compact-form-grid">
+                        <div class="form-group">
+                            <label>履約價 (Strike)</label>
+                            <input type="number" id="futures-strike" step="100">
+                        </div>
+                        <div class="form-group">
+                            <label>口數 (Lots)</label>
+                            <input type="number" id="futures-lots" value="1" min="1">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="btn-add-futures">新增期貨倉位</button>
+                </div>
+            </section>
+
+            <!-- Strategy Comparison -->
+            <section class="card" id="positions-section" style="display: none;">
+                <div class="section-header">
+                    <h2 class="section-title">📋 策略比較</h2>
+                    <div class="strategy-actions">
+                        <button class="btn btn-sm btn-secondary" id="btn-group-positions" title="建立複試單群組" disabled>
+                            🔗 建立群組
+                        </button>
+                        <button class="btn btn-sm btn-danger" id="btn-clear-strategy" title="清空當前策略">
+                            🧹 清空
+                        </button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>履約價 (Strike)</label>
-                    <input type="number" id="opt-strike" step="100">
-                </div>
-
-                <div class="form-group">
-                    <label>口數 (Lots)</label>
-                    <input type="number" id="opt-lots" value="1" min="1">
-                </div>
-
-                <div class="form-group">
-                    <label>成交價 (Premium)</label>
-                    <input type="number" id="opt-premium" step="0.5" min="0">
-                </div>
-            </div>
-            <button class="btn btn-primary btn-full" id="btn-add-option">新增選擇權倉位</button>
-
-            <!-- Strike Picker -->
-            <div id="strike-picker-grid" class="mt-4"></div>
-        </div>
-
-        <!-- Futures Form -->
-        <div id="futures-form" class="position-form" style="display: none;">
-            <div class="alert-info mb-3">
-                💡 微台期貨固定為 <strong>做空 (Sell)</strong> 用於避險
-            </div>
-            <div class="compact-form-grid">
-                <div class="form-group">
-                    <label>履約價 (Strike)</label>
-                    <input type="number" id="futures-strike" step="100">
-                </div>
-                <div class="form-group">
-                    <label>口數 (Lots)</label>
-                    <input type="number" id="futures-lots" value="1" min="1">
-                </div>
-            </div>
-            <button class="btn btn-primary btn-full" id="btn-add-futures">新增期貨倉位</button>
-        </div>
-    </section>
-
-    <!-- Strategy Comparison -->
-    <section class="card" id="positions-section" style="display: none;">
-        <div class="section-header">
-            <h2 class="section-title">📋 策略比較</h2>
-            <div class="strategy-actions">
-                <button class="btn btn-sm btn-secondary" id="btn-group-positions" title="建立複試單群組" disabled>
-                    🔗 建立群組
-                </button>
-                <button class="btn btn-sm btn-danger" id="btn-clear-strategy" title="清空當前策略">
-                    🧹 清空
-                </button>
-            </div>
-        </div>
-
-        <!-- Dual Column Positions -->
-        <div class="comparison-grid">
-            <!-- Strategy A -->
-            <div class="strategy-column" id="strategy-col-a">
-                <div class="strategy-header strategy-a">
-                    <span class="strategy-label">🔴 策略 A</span>
-                    <span class="strategy-count" id="count-a">0 筆</span>
-                </div>
-                <div class="positions-list" id="positions-list-a"></div>
-                <div class="premium-summary">
-                    <div class="premium-row">
-                        <span>收入:</span>
-                        <span class="profit" id="premium-in-a">+0</span>
+                <!-- Dual Column Positions -->
+                <div class="comparison-grid">
+                    <!-- Strategy A -->
+                    <div class="strategy-column" id="strategy-col-a">
+                        <div class="strategy-header strategy-a">
+                            <span class="strategy-label">🔴 策略 A</span>
+                            <span class="strategy-count" id="count-a">0 筆</span>
+                        </div>
+                        <div class="positions-list" id="positions-list-a"></div>
+                        <div class="premium-summary">
+                            <div class="premium-row">
+                                <span>收入:</span>
+                                <span class="profit" id="premium-in-a">+0</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>支出:</span>
+                                <span class="loss" id="premium-out-a">-0</span>
+                            </div>
+                            <div class="premium-row premium-net">
+                                <span>淨額:</span>
+                                <span id="premium-net-a">0 元</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="premium-row">
-                        <span>支出:</span>
-                        <span class="loss" id="premium-out-a">-0</span>
+
+                    <!-- Strategy B -->
+                    <div class="strategy-column" id="strategy-col-b">
+                        <div class="strategy-header strategy-b">
+                            <span class="strategy-label">🔵 策略 B</span>
+                            <span class="strategy-count" id="count-b">0 筆</span>
+                        </div>
+                        <div class="positions-list" id="positions-list-b"></div>
+                        <div class="premium-summary">
+                            <div class="premium-row">
+                                <span>收入:</span>
+                                <span class="profit" id="premium-in-b">+0</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>支出:</span>
+                                <span class="loss" id="premium-out-b">-0</span>
+                            </div>
+                            <div class="premium-row premium-net">
+                                <span>淨額:</span>
+                                <span id="premium-net-b">0 元</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="premium-row premium-net">
-                        <span>淨額:</span>
-                        <span id="premium-net-a">0 元</span>
+
+                    <!-- Strategy C -->
+                    <div class="strategy-column" id="strategy-col-c">
+                        <div class="strategy-header strategy-c">
+                            <span class="strategy-label">🟢 策略 C</span>
+                            <span class="strategy-count" id="count-c">0 筆</span>
+                        </div>
+                        <div class="positions-list" id="positions-list-c"></div>
+                        <div class="premium-summary">
+                            <div class="premium-row">
+                                <span>收入:</span>
+                                <span class="profit" id="premium-in-c">+0</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>支出:</span>
+                                <span class="loss" id="premium-out-c">-0</span>
+                            </div>
+                            <div class="premium-row premium-net">
+                                <span>淨額:</span>
+                                <span id="premium-net-c">0 元</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Strategy B -->
-            <div class="strategy-column" id="strategy-col-b">
-                <div class="strategy-header strategy-b">
-                    <span class="strategy-label">🔵 策略 B</span>
-                    <span class="strategy-count" id="count-b">0 筆</span>
+                <!-- Add to Strategy -->
+                <div class="add-to-strategy">
+                    <span>新增倉位到:</span>
+                    <button class="btn btn-sm strategy-add-btn active" id="btn-add-to-a" data-strategy="A">🔴 A</button>
+                    <button class="btn btn-sm strategy-add-btn" id="btn-add-to-b" data-strategy="B">🔵 B</button>
+                    <button class="btn btn-sm strategy-add-btn" id="btn-add-to-c" data-strategy="C">🟢 C</button>
                 </div>
-                <div class="positions-list" id="positions-list-b"></div>
-                <div class="premium-summary">
-                    <div class="premium-row">
-                        <span>收入:</span>
-                        <span class="profit" id="premium-in-b">+0</span>
+            </section>
+
+
+
+            <!-- AI Inventory Parser -->
+            <section class="card" id="ai-inventory">
+                <details>
+                    <summary class="section-title-summary">
+                        <h2 class="section-title inline-title">🤖 AI 庫存判讀 (點擊展開)</h2>
+                    </summary>
+
+                    <!-- 圖片上傳 -->
+                    <div class="ocr-section">
+                        <p class="upload-hint">📸 上傳券商庫存截圖，AI 自動辨識選擇權倉位</p>
+                        <div class="image-upload-area" id="image-upload-area">
+                            <input type="file" id="image-upload" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">📷</span>
+                                <p>拖曳圖片到這裡，或<button class="btn-link" id="btn-browse-image">點擊上傳</button></p>
+                            </div>
+                        </div>
+                        <div class="image-preview" id="image-preview" style="display: none;">
+                            <img id="preview-img" src="" alt="預覽">
+                            <button class="btn btn-primary" id="btn-ocr-recognize">🔍 AI 辨識圖片</button>
+                            <button class="btn btn-secondary" id="btn-clear-image">🧹 清除</button>
+                        </div>
                     </div>
-                    <div class="premium-row">
-                        <span>支出:</span>
-                        <span class="loss" id="premium-out-b">-0</span>
+
+                    <div class="divider-or"><span>或</span></div>
+
+                    <!-- 文字貼上 -->
+                    <p class="upload-hint">📝 貼上券商庫存資料（支援富邦、永豐、元大等格式）</p>
+                    <div class="form-group">
+                        <textarea id="inventory-text" rows="4" placeholder="請貼上您的庫存資料..."></textarea>
                     </div>
-                    <div class="premium-row premium-net">
-                        <span>淨額:</span>
-                        <span id="premium-net-b">0 元</span>
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="btn-parse-inventory">🔍 解析文字</button>
+                        <button class="btn btn-secondary" id="btn-clear-inventory">🧹 清空</button>
                     </div>
+
+                    <div class="parse-results" id="parse-results" style="display: none;">
+                        <h4>📊 解析結果</h4>
+                        <div class="parsed-etf" id="parsed-etf"></div>
+                        <div class="parsed-options" id="parsed-options"></div>
+                        <button class="btn btn-success btn-full" id="btn-apply-parsed">✅ 套用到計算器</button>
+                    </div>
+                </details>
+            </section>
+
+            <!-- PnL Chart -->
+            <section class="card" id="pnl-chart-section">
+                <h2 class="section-title">📈 損益曲線</h2>
+                <div class="chart-container">
+                    <canvas id="pnl-chart"></canvas>
                 </div>
-            </div>
-
-            <!-- Strategy C -->
-            <div class="strategy-column" id="strategy-col-c">
-                <div class="strategy-header strategy-c">
-                    <span class="strategy-label">🟢 策略 C</span>
-                    <span class="strategy-count" id="count-c">0 筆</span>
+                <div class="chart-legend">
+                    📊 <b>圖例說明：</b>
+                    <span class="legend-item legend-etf">00631L</span> = ETF損益 |
+                    <span class="legend-item legend-option">Options</span> = 選擇權組合 |
+                    <span class="legend-item legend-total">Total P/L</span> = 組合總損益 |
+                    <span class="legend-item legend-current">Current</span> = 現價
                 </div>
-                <div class="positions-list" id="positions-list-c"></div>
-                <div class="premium-summary">
-                    <div class="premium-row">
-                        <span>收入:</span>
-                        <span class="profit" id="premium-in-c">+0</span>
-                    </div>
-                    <div class="premium-row">
-                        <span>支出:</span>
-                        <span class="loss" id="premium-out-c">-0</span>
-                    </div>
-                    <div class="premium-row premium-net">
-                        <span>淨額:</span>
-                        <span id="premium-net-c">0 元</span>
-                    </div>
+            </section>
+
+            <!-- PnL Table -->
+            <section class="card" id="pnl-table-section">
+                <h2 class="section-title">📊 損益試算表</h2>
+                <div class="table-container">
+                    <table class="pnl-table" id="pnl-table">
+                        <thead>
+                            <tr>
+                                <th>變動</th>
+                                <th class="col-strategy-a">🔴 策略 A</th>
+                                <th class="col-strategy-b">🔵 策略 B</th>
+                                <th class="col-strategy-c">🟢 策略 C</th>
+                                <th>00631L</th>
+                                <th>ETF損益變化</th>
+                                <th>帳戶</th>
+                                <th class="col-total-a">總損益 (A)</th>
+                                <th class="col-total-b">總損益 (B)</th>
+                                <th class="col-total-c">總損益 (C)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pnl-table-body">
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
-
-        <!-- Add to Strategy -->
-        <div class="add-to-strategy">
-            <span>新增倉位到:</span>
-            <button class="btn btn-sm strategy-add-btn active" id="btn-add-to-a" data-strategy="A">🔴 A</button>
-            <button class="btn btn-sm strategy-add-btn" id="btn-add-to-b" data-strategy="B">🔵 B</button>
-            <button class="btn btn-sm strategy-add-btn" id="btn-add-to-c" data-strategy="C">🟢 C</button>
-        </div>
-    </section>
-
-
-
-    <!-- AI Inventory Parser -->
-    <section class="card" id="ai-inventory">
-        <details>
-            <summary class="section-title-summary">
-                <h2 class="section-title inline-title">🤖 AI 庫存判讀 (點擊展開)</h2>
-            </summary>
-
-            <!-- 圖片上傳 -->
-            <div class="ocr-section">
-                <p class="upload-hint">📸 上傳券商庫存截圖，AI 自動辨識選擇權倉位</p>
-                <div class="image-upload-area" id="image-upload-area">
-                    <input type="file" id="image-upload" accept="image/*" hidden>
-                    <div class="upload-content">
-                        <span class="upload-icon">📷</span>
-                        <p>拖曳圖片到這裡，或<button class="btn-link" id="btn-browse-image">點擊上傳</button></p>
-                    </div>
-                </div>
-                <div class="image-preview" id="image-preview" style="display: none;">
-                    <img id="preview-img" src="" alt="預覽">
-                    <button class="btn btn-primary" id="btn-ocr-recognize">🔍 AI 辨識圖片</button>
-                    <button class="btn btn-secondary" id="btn-clear-image">🧹 清除</button>
-                </div>
-            </div>
-
-            <div class="divider-or"><span>或</span></div>
-
-            <!-- 文字貼上 -->
-            <p class="upload-hint">📝 貼上券商庫存資料（支援富邦、永豐、元大等格式）</p>
-            <div class="form-group">
-                <textarea id="inventory-text" rows="4" placeholder="請貼上您的庫存資料..."></textarea>
-            </div>
-            <div class="button-group">
-                <button class="btn btn-primary" id="btn-parse-inventory">🔍 解析文字</button>
-                <button class="btn btn-secondary" id="btn-clear-inventory">🧹 清空</button>
-            </div>
-
-            <div class="parse-results" id="parse-results" style="display: none;">
-                <h4>📊 解析結果</h4>
-                <div class="parsed-etf" id="parsed-etf"></div>
-                <div class="parsed-options" id="parsed-options"></div>
-                <button class="btn btn-success btn-full" id="btn-apply-parsed">✅ 套用到計算器</button>
-            </div>
-        </details>
-    </section>
-
-    <!-- PnL Chart -->
-    <section class="card" id="pnl-chart-section">
-        <h2 class="section-title">📈 損益曲線</h2>
-        <div class="chart-container">
-            <canvas id="pnl-chart"></canvas>
-        </div>
-        <div class="chart-legend">
-            📊 <b>圖例說明：</b>
-            <span class="legend-item legend-etf">00631L</span> = ETF損益 |
-            <span class="legend-item legend-option">Options</span> = 選擇權組合 |
-            <span class="legend-item legend-total">Total P/L</span> = 組合總損益 |
-            <span class="legend-item legend-current">Current</span> = 現價
-        </div>
-    </section>
-
-    <!-- PnL Table -->
-    <section class="card" id="pnl-table-section">
-        <h2 class="section-title">📊 損益試算表</h2>
-        <div class="table-container">
-            <table class="pnl-table" id="pnl-table">
-                <thead>
-                    <tr>
-                        <th>變動</th>
-                        <th class="col-strategy-a">🔴 策略 A</th>
-                        <th class="col-strategy-b">🔵 策略 B</th>
-                        <th class="col-strategy-c">🟢 策略 C</th>
-                        <th>00631L</th>
-                        <th>ETF損益變化</th>
-                        <th>帳戶</th>
-                        <th class="col-total-a">總損益 (A)</th>
-                        <th class="col-total-b">總損益 (B)</th>
-                        <th class="col-total-c">總損益 (C)</th>
-                    </tr>
-                </thead>
-                <tbody id="pnl-table-body">
-                </tbody>
-            </table>
-        </div>
-    </section>
-    </main>
+            </section>
+        </main>
     </div>
 
     <!-- Footer -->
