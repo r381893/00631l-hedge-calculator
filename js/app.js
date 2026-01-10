@@ -2303,18 +2303,24 @@ function handleSaveFirebaseConfig() {
         }
 
         const config = JSON.parse(configStr);
-        if (FirebaseModule.saveUserConfig(config)) {
-            showToast('success', '設定已儲存，正在重新連線...');
-            // 重新初始化
-            FirebaseModule.initFirebase(config);
-            // 延遲重整以確保完全生效
-            setTimeout(() => window.location.reload(), 1000);
-        } else {
-            showToast('error', '儲存失敗');
-        }
+        // saveUserConfig now throws on error
+        FirebaseModule.saveUserConfig(config);
+
+        showToast('success', '設定已儲存，正在重新連線...');
+
+        // 重新初始化 (嘗試)
+        FirebaseModule.initFirebase(config);
+
+        // 延遲重整以確保完全生效
+        setTimeout(() => window.location.reload(), 1000);
+
     } catch (e) {
-        showToast('error', '設定格式錯誤 (必須是有效 JSON)');
         console.error(e);
+        if (e instanceof SyntaxError) {
+            showToast('error', '設定格式錯誤 (必須是有效 JSON)');
+        } else {
+            showToast('error', '儲存失敗: ' + e.message);
+        }
     }
 }
 

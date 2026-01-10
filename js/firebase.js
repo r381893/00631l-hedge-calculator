@@ -115,14 +115,18 @@ function initFirebase(config = null) {
 function saveUserConfig(configJson) {
     try {
         // 驗證是否有基本欄位
-        if (!configJson.databaseURL) {
-            throw new Error('設定缺少 databaseURL');
+        const requiredFields = ['apiKey', 'authDomain', 'databaseURL', 'projectId'];
+        const missingFields = requiredFields.filter(field => !configJson[field]);
+
+        if (missingFields.length > 0) {
+            throw new Error(`設定缺少必要欄位: ${missingFields.join(', ')}`);
         }
+
         localStorage.setItem('user_firebase_config', JSON.stringify(configJson));
         return true;
     } catch (e) {
         console.error('儲存設定失敗', e);
-        return false;
+        throw e; // Rethrow to let caller handle ui feedback
     }
 }
 
