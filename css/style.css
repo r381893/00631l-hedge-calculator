@@ -467,11 +467,8 @@ a:hover {
     flex: 1;
     margin-left: var(--sidebar-width);
     padding: 24px;
-    max-width: 1400px;
-    /* Constrain width on large screens */
-    width: 100%;
-    margin-right: auto;
-    /* Center the content area if it hits max-width */
+    max-width: calc(100% - var(--sidebar-width));
+    box-sizing: border-box;
 }
 
 /* ======== Cards ======== */

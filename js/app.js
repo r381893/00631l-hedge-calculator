@@ -230,7 +230,7 @@ async function initApp() {
 
         // 設定版本時間 (Static Build Time)
         if (elements.updateTime) {
-            elements.updateTime.textContent = '2026-01-10 08:36';
+            elements.updateTime.textContent = '2026-01-10 08:43';
         }
 
         // 載入資料
