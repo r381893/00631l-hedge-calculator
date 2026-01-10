@@ -727,30 +727,6 @@ function createPositionItem(pos, index, strategy = 'A') {
         `;
     }
 
-    // 平倉區塊 HTML
-    let closeHTML = '';
-    if (pos.isClosed) {
-        const realizedPnL = Calculator.calcRealizedPnL(pos, parseFloat(pos.closePrice));
-        const pnlClass = realizedPnL >= 0 ? 'profit' : 'loss';
-        const pnlSign = realizedPnL >= 0 ? '+' : '';
-
-        closeHTML = `
-            <div class="close-info">
-                <div class="close-input-group">
-                    <label>平倉價:</label>
-                    <input type="number" class="close-price-input" 
-                        value="${pos.closePrice || ''}" 
-                        data-index="${index}" 
-                        data-strategy="${strategy}" 
-                        placeholder="價格">
-                </div>
-                <div class="realized-pnl ${pnlClass}">
-                    ${pnlSign}${realizedPnL.toLocaleString()}
-                </div>
-            </div>
-        `;
-    }
-
     div.innerHTML = `
         <div class="position-header">
             <div class="position-left">
@@ -764,17 +740,9 @@ function createPositionItem(pos, index, strategy = 'A') {
                 </div>
             </div>
             <div class="position-actions">
-                <label class="close-toggle">
-                    <input type="checkbox" class="close-check" 
-                        data-index="${index}" 
-                        data-strategy="${strategy}" 
-                        ${pos.isClosed ? 'checked' : ''}>
-                    <span>平倉</span>
-                </label>
                 <button class="position-btn delete" data-action="delete" data-index="${index}" data-strategy="${strategy}" title="刪除">🗑️</button>
             </div>
         </div>
-        ${closeHTML}
     `;
 
     // 綁定選取框事件
@@ -789,15 +757,6 @@ function createPositionItem(pos, index, strategy = 'A') {
     div.querySelectorAll('.lots-btn').forEach(btn => {
         btn.addEventListener('click', handleLotsStepper);
     });
-
-    // 綁定平倉切換
-    div.querySelector('.close-check').addEventListener('change', handlePositionCloseToggle);
-
-    // 綁定平倉價輸入
-    const closeInput = div.querySelector('.close-price-input');
-    if (closeInput) {
-        closeInput.addEventListener('input', handlePositionClosePrice);
-    }
 
     return div;
 }
