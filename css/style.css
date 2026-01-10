@@ -202,9 +202,10 @@ a:hover {
     margin-left: var(--sidebar-width);
     padding: 24px;
     width: auto;
-    /* Natural flow width */
-    max-width: none;
-    /* Remove previous constraints */
+
+    /* Constraint width on ultra-wide screens */
+    max-width: 1400px;
+
     box-sizing: border-box;
 }
 
