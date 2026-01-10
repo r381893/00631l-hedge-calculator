@@ -230,7 +230,7 @@ async function initApp() {
 
         // 設定版本時間 (Static Build Time)
         if (elements.updateTime) {
-            elements.updateTime.textContent = '2026-01-10 08:48';
+            elements.updateTime.textContent = '2026-01-10 09:01';
         }
 
         // 載入資料
@@ -305,8 +305,8 @@ async function initApp() {
         ChartModule.initPnLChart('pnl-chart');
         updateChart();
 
-        // 更新時間
-        updateTime();
+        // 更新時間 (現在使用 initApp 中的靜態版本時間)
+        // updateTime();
 
         state.isLoading = false;
         showToast('success', '應用程式載入完成');
