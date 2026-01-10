@@ -1015,8 +1015,13 @@ function updatePnLTable() {
 
         const changeStr = change >= 0 ? `+${change.toLocaleString()}` : change.toLocaleString();
 
+        // 加權指數，以 100 點四捨五入
+        const indexValue = Math.round(prices[i] / 100) * 100;
+        const indexStr = indexValue.toLocaleString();
+
         row.innerHTML = `
             <td>${changeStr}</td>
+            <td class="col-index">${indexStr}</td>
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
             <td class="col-strategy-c">${formatPnL(pnlC)}</td>
