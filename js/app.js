@@ -2191,7 +2191,7 @@ function bindAIEvents() {
 }
 
 // 請在這裡填入您的 API Key，就不用每次在網頁上輸入了！
-const HARDCODED_API_KEY = '';
+const HARDCODED_API_KEY = 'AIzaSyBJ5Lmvu1yE443lHiTYbvAWusKOGXQr8uk';
 
 /**
  * 執行 AI 策略分析
