@@ -230,7 +230,7 @@ async function initApp() {
 
         // 設定版本時間 (Static Build Time)
         if (elements.updateTime) {
-            elements.updateTime.textContent = '2026-01-10 11:27';
+            elements.updateTime.textContent = '2026-01-10 11:32';
         }
 
         // 載入資料
@@ -407,6 +407,8 @@ async function fetchMarketPrices() {
 function updateUI() {
     updateHeaderPrices();
     updateSidebarInputs();
+    updateETFSummary();
+    updateSuggestedHedge();
     renderPositionsList('A');
     updatePremiumSummary('A');
     renderPositionsList('B');
