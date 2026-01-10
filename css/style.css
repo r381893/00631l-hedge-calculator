@@ -189,9 +189,23 @@ a:hover {
 
 /* ======== App Container ======== */
 .app-container {
-    display: flex;
+    /* Removed display: flex to avoid conflicts with fixed sidebar */
     min-height: calc(100vh - var(--header-height));
     margin-top: var(--header-height);
+}
+
+/* ... Sidebar remains fixed ... */
+
+/* ======== Main Content ======== */
+.main-content {
+    /* Standard block layout with indentation */
+    margin-left: var(--sidebar-width);
+    padding: 24px;
+    width: auto;
+    /* Natural flow width */
+    max-width: none;
+    /* Remove previous constraints */
+    box-sizing: border-box;
 }
 
 /* ======== Sidebar ======== */
@@ -463,15 +477,7 @@ a:hover {
 }
 
 /* ======== Main Content ======== */
-.main-content {
-    flex: 1;
-    margin-left: var(--sidebar-width);
-    padding: 24px;
-    width: calc(100% - var(--sidebar-width));
-    min-width: 0;
-    /* Prevent flex item from overflowing */
-    box-sizing: border-box;
-}
+
 
 /* ======== Cards ======== */
 .card {
