@@ -1394,9 +1394,113 @@ summary.section-title-summary h2 {
     z-index: 2000;
 }
 
-.toast.show {
-    transform: translateY(0);
-    opacity: 1;
+transform: translateY(0);
+opacity: 1;
+}
+
+/* Copy Strategy Refined Layout */
+.copy-flow-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    /* Increased gap */
+    padding: 20px;
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.3) 0%, rgba(15, 23, 42, 0.3) 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.copy-step {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+}
+
+.step-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-left: 4px;
+}
+
+.modern-select {
+    width: 100%;
+    padding: 14px;
+    background-color: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.modern-select:hover {
+    border-color: var(--accent);
+    background-color: rgba(15, 23, 42, 0.8);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    margin: -8px auto;
+    /* Overlap slightly */
+    z-index: 10;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    font-size: 1rem;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+}
+
+.flow-arrow:hover {
+    background: var(--accent);
+    color: white;
+    transform: scale(1.1);
+    border-color: var(--accent);
+}
+
+.copy-hint-row {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    opacity: 0.7;
+}
+
+/* AI Assistant Card */
+#ai-assistant-card {
+    border-top: 3px solid var(--accent-color);
+}
+
+.ai-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-ai-analysis {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    border: none;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(106, 17, 203, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-ai-analysis:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(106, 17, 203, 0.4);
 }
 
 .toast.success {

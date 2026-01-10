@@ -167,49 +167,74 @@
             <!-- Copy Strategy Card -->
             <section class="card" id="copy-strategy-card">
                 <h2 class="section-title">📥 複製策略</h2>
-                <div class="copy-controls">
-                    <div class="copy-group">
-                        <select id="copy-source" class="form-select">
+
+                <div class="copy-flow-container">
+                    <!-- Source -->
+                    <div class="copy-step">
+                        <label class="step-label">從哪裡複製 (Source)</label>
+                        <select id="copy-source" class="form-select modern-select">
                             <option value="A">🔴 策略 A</option>
                             <option value="B">🔵 策略 B</option>
                             <option value="C">🟢 策略 C</option>
                         </select>
                     </div>
-                </div>
 
-                <!-- AI Strategy Analysis Button -->
-                <div class="ai-analysis-trigger mt-3">
+                    <!-- Arrow -->
+                    <div class="flow-arrow">
+                        ⬇️
+                    </div>
+
+                    <!-- Target -->
+                    <div class="copy-step">
+                        <label class="step-label">複製到哪裡 (Target)</label>
+                        <select id="copy-target" class="form-select modern-select">
+                            <option value="B" selected>🔵 策略 B</option>
+                            <option value="A">🔴 策略 A</option>
+                            <option value="C">🟢 策略 C</option>
+                        </select>
+                    </div>
+
+                    <!-- Warning & Confirmation -->
+                    <div class="safety-zone mt-4">
+                        <div class="warning-box">
+                            <i class="icon-warning">⚠️</i>
+                            <span>注意：此操作將<strong>完全覆蓋</strong>目標策略的所有倉位資料。</span>
+                        </div>
+
+                        <div class="confirmation-checkbox">
+                            <label>
+                                <input type="checkbox" id="chk-confirm-copy">
+                                <span>我已知悉風險，確認執行</span>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-primary btn-full mt-2" id="btn-confirm-copy" disabled>
+                            確認複製
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Assistant Card -->
+            <section class="card" id="ai-assistant-card">
+                <h2 class="section-title">🤖 AI 策略助手</h2>
+                <div class="ai-controls">
                     <button class="btn btn-ai-analysis btn-full" id="btn-ai-analysis">
-                        🤖 AI 策略診斷 (Gemini)
+                        🧠 執行 AI 策略診斷 (Gemini)
                     </button>
                     <div id="ai-loading" style="display: none; margin-top: 10px; text-align: center;">
                         <span class="loading-spinner"></span> 正在分析中...
                     </div>
                 </div>
 
-
-
                 <!-- AI Analysis Result -->
-                <div id="ai-result-card" class="card mt-3" style="display: none;">
+                <div id="ai-result-card" class="mt-3" style="display: none;">
                     <div class="result-header">
-                        <h3>🤖 診斷報告</h3>
+                        <h3>📊 診斷報告</h3>
                         <button class="btn-close-result" id="btn-close-ai">✕</button>
                     </div>
                     <div id="ai-result-content" class="markdown-content"></div>
                 </div>
-                <!-- Removed stray /section here to keep Copy Controls inside -->
-                <div class="copy-arrow">➔</div>
-                <div class="copy-group">
-                    <label for="copy-target">複製到 (目標):</label>
-                    <select id="copy-target" class="form-select">
-                        <option value="B" selected>🔵 策略 B</option>
-                        <option value="A">🔴 策略 A</option>
-                        <option value="C">🟢 策略 C</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" id="btn-confirm-copy">確認複製</button>
-                <span class="copy-hint" id="copy-hint">⚠️ 將覆蓋目標策略</span>
-
             </section>
 
             <!-- Add Position Section -->
@@ -384,50 +409,7 @@
 
 
 
-            <!-- AI Inventory Parser -->
-            <section class="card" id="ai-inventory">
-                <details>
-                    <summary class="section-title-summary">
-                        <h2 class="section-title inline-title">🤖 AI 庫存判讀 (點擊展開)</h2>
-                    </summary>
-
-                    <!-- 圖片上傳 -->
-                    <div class="ocr-section">
-                        <p class="upload-hint">📸 上傳券商庫存截圖，AI 自動辨識選擇權倉位</p>
-                        <div class="image-upload-area" id="image-upload-area">
-                            <input type="file" id="image-upload" accept="image/*" hidden>
-                            <div class="upload-content">
-                                <span class="upload-icon">📷</span>
-                                <p>拖曳圖片到這裡，或<button class="btn-link" id="btn-browse-image">點擊上傳</button></p>
-                            </div>
-                        </div>
-                        <div class="image-preview" id="image-preview" style="display: none;">
-                            <img id="preview-img" src="" alt="預覽">
-                            <button class="btn btn-primary" id="btn-ocr-recognize">🔍 AI 辨識圖片</button>
-                            <button class="btn btn-secondary" id="btn-clear-image">🧹 清除</button>
-                        </div>
-                    </div>
-
-                    <div class="divider-or"><span>或</span></div>
-
-                    <!-- 文字貼上 -->
-                    <p class="upload-hint">📝 貼上券商庫存資料（支援富邦、永豐、元大等格式）</p>
-                    <div class="form-group">
-                        <textarea id="inventory-text" rows="4" placeholder="請貼上您的庫存資料..."></textarea>
-                    </div>
-                    <div class="button-group">
-                        <button class="btn btn-primary" id="btn-parse-inventory">🔍 解析文字</button>
-                        <button class="btn btn-secondary" id="btn-clear-inventory">🧹 清空</button>
-                    </div>
-
-                    <div class="parse-results" id="parse-results" style="display: none;">
-                        <h4>📊 解析結果</h4>
-                        <div class="parsed-etf" id="parsed-etf"></div>
-                        <div class="parsed-options" id="parsed-options"></div>
-                        <button class="btn btn-success btn-full" id="btn-apply-parsed">✅ 套用到計算器</button>
-                    </div>
-                </details>
-            </section>
+            <!-- AI Inventory Parser Removed -->
 
             <!-- PnL Chart -->
             <section class="card" id="pnl-chart-section">
@@ -474,7 +456,7 @@
     <!-- Footer -->
     <footer class="footer">
         <p>💡 選擇權乘數: 50 元/點 | 00631L 槓桿: 2x</p>
-        <p>Version: <span id="app-version">V1.1.2</span> | 資料更新時間: <span id="update-time">--</span> | <span
+        <p>Version: <span id="app-version">V1.1.20</span> | 資料更新時間: <span id="update-time">--</span> | <span
                 id="save-status">--</span></p>
     </footer>
 
@@ -495,7 +477,7 @@
     <script src="js/calculator.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/firebase.js"></script>
-    <script src="js/app.js?v=1.1.2"></script>
+    <script src="js/app.js?v=1.1.20"></script>
 </body>
 
 </html>

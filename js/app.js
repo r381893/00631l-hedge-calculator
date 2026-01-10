@@ -39,10 +39,14 @@ const state = {
 // ======== DOM 元素快取 ========
 const elements = {};
 
+// ======== 全域變數 ========
+let uploadedImageBase64 = null; // 儲存上傳圖片的 Base64 數據
+
 // ======== 初始化 ========
 document.addEventListener('DOMContentLoaded', async () => {
     cacheElements();
     bindEvents();
+    bindInventoryEvents(); // Bind new AI Inventory events
     await initApp();
 });
 
@@ -1911,7 +1915,8 @@ function handleApplyParsed() {
 const OCR_API_URL = 'https://zero0631l-hedge-api.onrender.com/api/ocr-image';
 
 // 暫存的圖片 base64
-let uploadedImageBase64 = null;
+// 暫存的圖片 base64
+// uploadedImageBase64 declared at top of file
 
 /**
  * 處理圖片上傳
@@ -1958,19 +1963,29 @@ function handleImageDrop(e) {
  * 處理圖片檔案 - 轉換為 base64 並預覽
  */
 function processImageFile(file) {
+    console.log('Processing image file:', file.name); // DEBUG
     const reader = new FileReader();
 
     reader.onload = (e) => {
         const base64 = e.target.result;
         uploadedImageBase64 = base64;
+        console.log('Image converted to base64, length:', base64.length); // DEBUG
 
         // 顯示預覽
-        elements.previewImg.src = base64;
-        elements.imageUploadArea.style.display = 'none';
-        elements.imagePreview.style.display = 'block';
+        if (elements.previewImg) elements.previewImg.src = base64;
+        if (elements.imageUploadArea) elements.imageUploadArea.style.display = 'none';
+
+        // 強制顯示預覽區塊
+        if (elements.imagePreview) {
+            elements.imagePreview.style.display = 'block';
+            console.log('Preview element set to display: block'); // DEBUG
+        } else {
+            console.error('Preview element not found!'); // DEBUG
+        }
     };
 
     reader.onerror = () => {
+        console.error('FileReader error');
         showToast('error', '無法讀取圖片');
     };
 
@@ -1992,9 +2007,28 @@ function handleClearImage() {
 /**
  * 執行 OCR 辨識
  */
+/**
+ * 執行 AI 圖片辨識 (使用 Gemini Vision)
+ */
+/**
+ * 執行 AI 圖片辨識 (使用 Gemini Vision)
+ */
 async function handleOcrRecognize() {
     if (!uploadedImageBase64) {
         showToast('error', '請先上傳圖片');
+        return;
+    }
+
+    // 優先使用寫死在程式碼的 Key，如果沒有才看網頁輸入框
+    const apiKey = HARDCODED_API_KEY || elements.aiApiKey?.value.trim() || '';
+
+    if (!apiKey) {
+        showToast('error', '請先設定 API Key (在下方 AI 設定區塊)');
+        // Open sidebar if closed
+        if (!elements.sidebar.classList.contains('open')) {
+            toggleSidebar();
+        }
+        elements.aiApiKey?.focus();
         return;
     }
 
@@ -2002,33 +2036,113 @@ async function handleOcrRecognize() {
     elements.imagePreview.style.display = 'none';
     elements.ocrLoading.style.display = 'block';
 
+    // 移除 data:image/png;base64, 前綴
+    const base64Data = uploadedImageBase64.split(',')[1];
+    const mimeType = uploadedImageBase64.split(',')[0].match(/:(.*?);/)[1];
+
     try {
-        const response = await fetch(OCR_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                image: uploadedImageBase64
-            })
-        });
+        const prompt = `
+你是一個專業的金融交易員助理。請分析這張圖片（券商庫存截圖），並提取出所有的「選擇權」倉位資訊。
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'OCR 服務錯誤');
+請將結果輸出為嚴格的 JSON 格式陣列，不要包含 Markdown 標記 (\`\`\`json ... \`\`\`)，直接回傳 JSON 字串即可。
+陣列中每個物件應包含以下欄位：
+- "type": "Call" 或 "Put"
+- "direction": "買進" 或 "賣出"
+- "strike": 履約價 (數值)
+- "lots": 口數 (數值, 必須為正整數)
+- "premium": 成交價或成本 (數值)
+
+請忽略期貨 (Futures) 或股票 (Stock) 倉位，只提取選擇權 (Options)。
+如果圖片模糊或無法辨識，請回傳空陣列 []。
+
+範例格式：
+[
+  {"type": "Call", "direction": "買進", "strike": 20000, "lots": 2, "premium": 350},
+  {"type": "Put", "direction": "賣出", "strike": 19800, "lots": 5, "premium": 80.5}
+]
+`;
+
+        // 定義模型列表 (Vision 優先順序)
+        const models = [
+            'gemini-1.5-flash-002',      // Explicit version
+            'gemini-1.5-flash-001',      // Explicit version
+            'gemini-1.5-flash',          // Alias
+            'gemini-1.5-flash-latest',   // Alias
+            'gemini-1.5-pro-002',        // Pro Explicit
+            'gemini-2.0-flash-exp',      // 2.0 實驗版
+            'gemini-1.5-flash-8b',       // 8B version
+            'gemini-pro-vision'          // 舊版備用
+        ];
+
+        let lastError = null;
+        let successData = null;
+
+        // 嘗試所有模型
+        for (const model of models) {
+            try {
+                console.log(`嘗試使用模型: ${model}...`);
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inline_data: {
+                                        mime_type: mimeType,
+                                        data: base64Data
+                                    }
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || `模型 ${model} 請求失敗`);
+                }
+
+                successData = await response.json();
+                break; // 成功就跳出迴圈
+            } catch (e) {
+                console.warn(`模型 ${model} 失敗:`, e.message);
+                lastError = e;
+                // 繼續嘗試下一個
+            }
         }
 
-        const data = await response.json();
-
-        if (!data.success || !data.csv) {
-            throw new Error('無法辨識圖片內容');
+        if (!successData) {
+            throw lastError || new Error('所有模型皆無法使用');
         }
 
-        // 解析 CSV 結果
-        const positions = parseOcrCsv(data.csv);
+        const text = successData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!text) throw new Error('模型未回傳資料');
+
+        // 清理 Markdown 標記以便解析 JSON
+        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        console.log('Gemini 解析結果:', cleanText);
+
+        let positions = [];
+        try {
+            positions = JSON.parse(cleanText);
+        } catch (e) {
+            console.error('JSON Parse Error:', e);
+            throw new Error('AI 回傳格式錯誤，無法解析');
+        }
+
+        if (!Array.isArray(positions)) {
+            throw new Error('AI 回傳格式非陣列');
+        }
 
         if (positions.length === 0) {
-            throw new Error('未識別到任何選擇權倉位');
+            throw new Error('未識別到任何選擇權倉位 (或是非選擇權商品)');
         }
 
         // 設定到 parsedInventory 並顯示結果
@@ -2042,7 +2156,28 @@ async function handleOcrRecognize() {
 
     } catch (error) {
         console.error('OCR Error:', error);
-        showToast('error', 'OCR 辨識失敗: ' + error.message);
+
+        // 如果全部失敗，嘗試自我診斷
+        if (error.message.includes('所有模型皆無法使用')) {
+            showToast('warning', '正在診斷可用模型...');
+            try {
+                const modelsResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                const modelsData = await modelsResp.json();
+
+                if (modelsData.models) {
+                    const availableModels = modelsData.models
+                        .filter(m => m.supportedGenerationMethods?.includes('generateContent') && m.name.includes('vision') || m.name.includes('flash') || m.name.includes('pro'))
+                        .map(m => m.name.replace('models/', ''))
+                        .join('\n');
+
+                    alert(`您的 API Key 無法存取目前設定的模型。\n\n目前可用的模型如下：\n${availableModels}\n\n請截圖給開發者！`);
+                }
+            } catch (diagError) {
+                console.error('Diagnosis failed:', diagError);
+            }
+        }
+
+        showToast('error', '辨識失敗: ' + error.message);
 
         // 恢復預覽
         elements.imagePreview.style.display = 'block';
@@ -2115,23 +2250,43 @@ function handleStrategySwitch(e) {
 }
 
 /**
- * 複製策略 A 到 B
+ * 複製策略
  */
 function handleCopyStrategy() {
-    // 深拷貝 A 到 B
-    state.strategies.B = JSON.parse(JSON.stringify(state.strategies.A));
+    const from = elements.copySource ? elements.copySource.value : 'A';
+    const to = elements.copyTarget ? elements.copyTarget.value : 'B';
 
-    // 如果當前是 B，立即更新顯示
-    if (state.currentStrategy === 'B') {
-        state.optionPositions = state.strategies.B;
+    if (from === to) {
+        showToast('warning', '來源與目標不能相同');
+        return;
+    }
+
+    // Double check confirmation (redundant but safe)
+    if (elements.chkConfirmCopy && !elements.chkConfirmCopy.checked) {
+        showToast('warning', '請先勾選確認方塊');
+        return;
+    }
+
+    // 深拷貝
+    state.strategies[to] = JSON.parse(JSON.stringify(state.strategies[from]));
+
+    // 如果當前是目標策略，立即更新顯示
+    if (state.currentStrategy === to) {
+        state.optionPositions = state.strategies[to];
         updateUI();
     }
 
-    // 無論如何都要更新圖表（因為 B 線變了）
+    // 無論如何都要更新圖表
     updateChart();
 
-    showToast('success', '已將策略 A 複製到策略 B');
+    showToast('success', `已將策略 ${from} 複製到策略 ${to}`);
     autoSave();
+
+    // Reset confirmation
+    if (elements.chkConfirmCopy) {
+        elements.chkConfirmCopy.checked = false;
+        elements.btnConfirmCopy.disabled = true;
+    }
 }
 
 
@@ -2182,16 +2337,59 @@ function bindAIEvents() {
     elements.btnCloseAi = document.getElementById('btn-close-ai');
     elements.aiResultContent = document.getElementById('ai-result-content');
     elements.aiApiKey = document.getElementById('ai-api-key');
-    // elements.aiModel = document.getElementById('ai-model'); // Model selection removed/hidden
 
+    // Button event listener
     elements.btnAiAnalysis?.addEventListener('click', handleAIAnalysis);
+
+    // Close button event listener
     elements.btnCloseAi?.addEventListener('click', () => {
         if (elements.aiResultCard) elements.aiResultCard.style.display = 'none';
     });
 }
 
+/**
+ * 綁定 AI 庫存判讀相關事件
+ */
+/**
+ * 綁定 AI 庫存判讀相關事件 (功能已移除)
+ */
+function bindInventoryEvents() {
+    // 功能已移除
+}
+        }
+    });
+
+// 拖曳上傳
+elements.imageUploadArea?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    elements.imageUploadArea.classList.add('dragover');
+});
+
+elements.imageUploadArea?.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    elements.imageUploadArea.classList.remove('dragover');
+});
+
+elements.imageUploadArea?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    elements.imageUploadArea.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        processImageFile(e.dataTransfer.files[0]);
+    }
+});
+
+elements.btnOcrRecognize?.addEventListener('click', handleOcrRecognize);
+elements.btnClearImage?.addEventListener('click', handleClearImage);
+
+elements.btnParseInventory?.addEventListener('click', handleParseInventory);
+elements.btnClearInventory?.addEventListener('click', () => {
+    if (elements.inventoryText) elements.inventoryText.value = '';
+    if (elements.parseResults) elements.parseResults.style.display = 'none';
+});
+}
+
 // 請在這裡填入您的 API Key，就不用每次在網頁上輸入了！
-const HARDCODED_API_KEY = 'AIzaSyBJ5Lmvu1yE443lHiTYbvAWusKOGXQr8uk';
+const HARDCODED_API_KEY = '';
 
 /**
  * 執行 AI 策略分析
@@ -2255,43 +2453,90 @@ ${strategyData.positions.map(p => `- ${p.direction} ${p.type} ${p.strike} @ ${p.
 請用繁體中文回答，使用 Markdown 格式（條列式重點），語氣專業但易懂。
 `;
 
-        // Call Gemini API
-        // 改用 gemini-1.5-flash-001 (特定版本號較穩定)
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }]
-            })
-        });
+        // 定義模型嘗試列表 (根據您的 API Key 可用列表調整)
+        const models = [
+            'gemini-2.0-flash',          // 新一代模型
+            'gemini-flash-latest',       // 最新 Flash 版本
+            'gemini-pro-latest',         // 最新 Pro 版本
+            'gemini-1.5-flash',          // 舊版備用
+            'gemini-pro'                 // 舊版備用
+        ];
 
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || 'API 請求失敗');
+        let lastError = null;
+        let successData = null;
+
+        // 嘗試所有模型
+        for (const model of models) {
+            try {
+                console.log(`嘗試使用模型: ${model}...`);
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: prompt }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || `模型 ${model} 請求失敗`);
+                }
+
+                successData = await response.json();
+                break; // 成功就跳出迴圈
+            } catch (e) {
+                console.warn(`模型 ${model} 失敗:`, e.message);
+                lastError = e;
+                // 繼續嘗試下一個
+            }
         }
 
-        const data = await response.json();
-        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!successData) {
+            throw lastError || new Error('所有模型皆無法使用');
+        }
+
+        const aiText = successData.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (aiText) {
             // Render Result
             if (elements.aiResultCard) elements.aiResultCard.style.display = 'block';
             if (elements.aiResultContent) {
-                // Use marked to parse markdown
                 elements.aiResultContent.innerHTML = marked.parse(aiText);
             }
             showToast('success', 'AI 分析完成');
-        } else {
-            throw new Error('模型未回傳內容');
         }
 
     } catch (error) {
         console.error('AI Error:', error);
-        showToast('error', 'AI 分析失敗: ' + error.message);
+
+        // 嘗試列出可用模型以進行診斷
+        try {
+            showToast('warning', '正在診斷可用模型...');
+            const modelsResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            const modelsData = await modelsResp.json();
+
+            if (modelsData.models) {
+                const availableModels = modelsData.models
+                    .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+                    .map(m => m.name.replace('models/', ''))
+                    .join(', ');
+
+                console.log('Available Models:', availableModels);
+                alert(`您的 API Key 可用的模型有：\n${availableModels}\n\n請截圖此畫面給開發者！`);
+            } else {
+                alert('無法取得模型列表，請檢查 API Key 是否正確或是 Google Cloud Console 是否已啟用 Generative Language API。');
+            }
+        } catch (e) {
+            console.error('ListModels Error:', e);
+            alert(`診斷失敗：${error.message}\n\n而且連模型列表都抓不到，請檢查網路或 API Key 權限！`);
+        }
+
+        showToast('error', 'AI 分析失敗');
     } finally {
         elements.btnAiAnalysis.disabled = false;
         if (elements.aiLoading) elements.aiLoading.style.display = 'none';
