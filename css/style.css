@@ -467,7 +467,9 @@ a:hover {
     flex: 1;
     margin-left: var(--sidebar-width);
     padding: 24px;
-    max-width: calc(100% - var(--sidebar-width));
+    width: calc(100% - var(--sidebar-width));
+    min-width: 0;
+    /* Prevent flex item from overflowing */
     box-sizing: border-box;
 }
 
