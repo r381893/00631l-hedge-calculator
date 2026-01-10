@@ -230,7 +230,7 @@ async function initApp() {
 
         // 設定版本時間 (Static Build Time)
         if (elements.updateTime) {
-            elements.updateTime.textContent = '2026-01-10 11:21';
+            elements.updateTime.textContent = '2026-01-10 11:27';
         }
 
         // 載入資料
@@ -1525,7 +1525,7 @@ async function handleAIAnalysis() {
  * 呼叫 Google Gemini API
  */
 async function callGeminiAPI(prompt, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
         method: 'POST',
