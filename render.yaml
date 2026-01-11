@@ -1,0 +1,17 @@
+# Render 部署設定
+# 需要在 Render Dashboard 設定以下環境變數:
+# - FUBON_USER_ID
+# - FUBON_PASSWORD
+# - FUBON_CERT_PATH
+# - FUBON_CERT_PASSWORD
+# - FUBON_API_URL (測試環境用)
+
+services:
+  - type: web
+    name: option-price-api
+    env: python
+    buildCommand: pip install -r api/requirements.txt
+    startCommand: gunicorn api.app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
