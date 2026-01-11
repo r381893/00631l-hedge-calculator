@@ -2628,3 +2628,181 @@ summary.section-title-summary h2 {
     -webkit-appearance: none;
     margin: 0;
 }
+
+/* ======== Responsive Design - Mobile ======== */
+@media screen and (max-width: 768px) {
+
+    /* Header adjustments */
+    .header-content {
+        padding: 0 12px;
+    }
+
+    .logo-text h1 {
+        font-size: 1.1rem;
+    }
+
+    .logo-text p {
+        display: none;
+    }
+
+    .market-info {
+        gap: 8px;
+    }
+
+    .market-item {
+        padding: 6px 10px;
+    }
+
+    .market-label {
+        font-size: 0.65rem;
+    }
+
+    .market-value {
+        font-size: 1rem;
+    }
+
+    /* Sidebar - Hidden by default on mobile */
+    .sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+        z-index: 1100;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Sidebar Toggle Button - Visible on mobile */
+    .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1101;
+    }
+
+    /* Main content - Full width on mobile */
+    .main-content {
+        margin-left: 0;
+        padding: 16px;
+        width: 100%;
+    }
+
+    /* Overlay when sidebar is open */
+    .sidebar.open::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 280px;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+    }
+
+    /* Cards adjustments */
+    .card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .section-title {
+        font-size: 1rem;
+    }
+
+    /* Strategy columns - Stack vertically on mobile */
+    .comparison-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    /* Form adjustments */
+    .compact-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* PnL Table - Horizontal scroll */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pnl-table {
+        min-width: 900px;
+        font-size: 0.75rem;
+    }
+
+    .pnl-table th,
+    .pnl-table td {
+        padding: 6px 8px;
+    }
+
+    /* Button adjustments */
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+
+    /* Position item adjustments */
+    .position-row-content {
+        flex-wrap: wrap;
+        height: auto;
+        gap: 8px;
+    }
+
+    /* Chart adjustments */
+    .chart-container {
+        height: 250px;
+    }
+
+    /* Copy flow - Stack vertically */
+    .copy-flow-container {
+        flex-direction: column;
+    }
+
+    .flow-arrow {
+        transform: rotate(0);
+    }
+}
+
+/* Extra small screens */
+@media screen and (max-width: 480px) {
+    .logo-icon {
+        font-size: 24px;
+    }
+
+    .logo-text h1 {
+        font-size: 1rem;
+    }
+
+    .market-item {
+        padding: 4px 8px;
+    }
+
+    .market-value {
+        font-size: 0.9rem;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .sidebar.open::before {
+        display: none;
+    }
+
+    .sidebar-toggle {
+        right: -44px;
+    }
+
+    .compact-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tab-group {
+        flex-direction: column;
+    }
+
+    .tab {
+        width: 100%;
+    }
+}
