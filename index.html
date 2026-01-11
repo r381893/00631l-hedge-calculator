@@ -264,11 +264,11 @@
                         <div class="form-group">
                             <label>買賣方向</label>
                             <div class="radio-group">
-                                <label class="radio-label">
+                                <label class="radio-label buy-label">
                                     <input type="radio" name="opt-direction" value="買進" checked>
                                     <span>Buy</span>
                                 </label>
-                                <label class="radio-label">
+                                <label class="radio-label sell-label">
                                     <input type="radio" name="opt-direction" value="賣出">
                                     <span>Sell</span>
                                 </label>
@@ -287,10 +287,28 @@
 
                         <div class="form-group">
                             <label>成交價 (Premium)</label>
-                            <input type="number" id="opt-premium" step="any" min="0">
+                            <div class="input-with-button">
+                                <input type="number" id="opt-premium" step="any" min="0">
+                                <button class="btn btn-sm btn-outline" id="btn-get-price" title="取得即時報價">
+                                    🔍
+                                </button>
+                            </div>
+                            <span id="price-loading" class="input-hint" style="display: none;">載入中...</span>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-full" id="btn-add-option">新增選擇權倉位</button>
+
+                    <!-- Data Source Switcher -->
+                    <div class="source-switcher mt-4">
+                        <span class="source-label">📡 資料來源:</span>
+                        <div class="source-buttons">
+                            <button class="source-btn active" data-source="taifex" title="期交所收盤資料">期交所</button>
+                            <button class="source-btn" data-source="mock" title="模擬資料">模擬</button>
+                            <button class="source-btn" data-source="fubon" title="富邦即時報價 (需設定憑證)"
+                                data-offline-hint="交易時間 09:30-19:00" disabled>富邦</button>
+                        </div>
+                        <span class="source-status" id="source-status">載入中...</span>
+                    </div>
 
                     <!-- Strike Picker -->
                     <div id="strike-picker-grid" class="mt-4"></div>
@@ -434,6 +452,11 @@
                 <h2 class="section-title">📈 損益曲線</h2>
                 <div class="chart-container">
                     <canvas id="pnl-chart"></canvas>
+                    <div class="chart-empty-state" id="chart-empty-state">
+                        <div class="empty-icon">📊</div>
+                        <p class="empty-title">尚未新增倉位</p>
+                        <p class="empty-hint">請從上方「新增倉位」區塊加入選擇權或微台期貨，即可查看損益曲線。</p>
+                    </div>
                 </div>
                 <div class="chart-legend">
                     📊 <b>圖例說明：</b>
@@ -475,7 +498,7 @@
     <!-- Footer -->
     <footer class="footer">
         <p>💡 選擇權乘數: 50 元/點 | 00631L 槓桿: 2x</p>
-        <p>Version: <span id="app-version">V1.1.24</span> | 資料更新時間: <span id="update-time">--</span> | <span
+        <p>Version: <span id="app-version">V1.1.27</span> | 資料更新時間: <span id="update-time">--</span> | <span
                 id="save-status">--</span></p>
     </footer>
 

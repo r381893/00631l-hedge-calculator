@@ -35,6 +35,8 @@ const state = {
 
     // UI Cache
     lastRenderedStrikeCenter: null,
+    optionChainData: null,
+    optionSource: 'taifex', // 報價來源: taifex, mock, fubon
 
     // 複試單分組
     nextGroupId: 1,
@@ -130,6 +132,8 @@ function cacheElements() {
     elements.optStrike = document.getElementById('opt-strike');
     elements.optLots = document.getElementById('opt-lots');
     elements.optPremium = document.getElementById('opt-premium');
+    elements.btnGetPrice = document.getElementById('btn-get-price');
+    elements.priceLoading = document.getElementById('price-loading');
     elements.btnAddOption = document.getElementById('btn-add-option');
 
     // Futures Form
@@ -219,6 +223,7 @@ function bindEvents() {
 
     // Add Position
     elements.btnAddOption?.addEventListener('click', handleAddOption);
+    elements.btnGetPrice?.addEventListener('click', handleGetOptionPrice);
     elements.btnAddFutures?.addEventListener('click', handleAddFutures);
 
     // Strategy Controls
@@ -255,6 +260,99 @@ function bindEvents() {
 
     // AI Analysis
     bindAIEvents();
+
+    // Source Switcher (資料來源切換)
+    bindSourceSwitcherEvents();
+}
+
+/**
+ * 綁定資料來源切換事件
+ */
+function bindSourceSwitcherEvents() {
+    const sourceButtons = document.querySelectorAll('.source-btn');
+    const sourceStatus = document.getElementById('source-status');
+
+    sourceButtons.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const source = e.target.dataset.source;
+            if (!source || btn.disabled) return;
+
+            // 更新按鈕狀態
+            sourceButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // 更新 state
+            state.optionSource = source;
+            state.lastRenderedStrikeCenter = null; // 強制重新載入
+            state.optionChainData = null;
+
+            // 更新狀態顯示
+            if (sourceStatus) {
+                sourceStatus.textContent = '切換中...';
+                sourceStatus.className = 'source-status';
+            }
+
+            // 重新載入報價表
+            await renderStrikePicker();
+
+            // 更新狀態
+            if (sourceStatus && state.optionChainData) {
+                const sourceLabel = {
+                    'taifex': '期交所',
+                    'mock': '模擬',
+                    'fubon': '富邦'
+                };
+                sourceStatus.textContent = sourceLabel[state.optionChainData.source] || state.optionChainData.source;
+                sourceStatus.className = state.optionChainData.source === 'mock' ? 'source-status warning' : 'source-status success';
+            }
+        });
+    });
+
+    // 初始化時檢查可用來源
+    initSourceAvailability();
+}
+
+/**
+ * 初始化並檢查可用的資料來源
+ */
+async function initSourceAvailability() {
+    const sourceStatus = document.getElementById('source-status');
+    const fubonBtn = document.querySelector('.source-btn[data-source="fubon"]');
+    const taifexBtn = document.querySelector('.source-btn[data-source="taifex"]');
+
+    try {
+        const response = await fetch('http://localhost:5000/api/sources');
+        if (response.ok) {
+            const data = await response.json();
+
+            // 啟用富邦按鈕（如果可用）
+            if (fubonBtn && data.fubon_available) {
+                fubonBtn.disabled = false;
+            }
+
+            // 如果期交所不可用，自動切換到 mock
+            if (!data.taifex_available && taifexBtn) {
+                taifexBtn.classList.remove('active');
+                const mockBtn = document.querySelector('.source-btn[data-source="mock"]');
+                if (mockBtn) {
+                    mockBtn.classList.add('active');
+                    state.optionSource = 'mock';
+                }
+            }
+
+            // 更新狀態
+            if (sourceStatus) {
+                sourceStatus.textContent = data.taifex_available ? '期交所' : '模擬';
+                sourceStatus.className = data.taifex_available ? 'source-status success' : 'source-status warning';
+            }
+        }
+    } catch (error) {
+        console.warn('無法檢查資料來源:', error);
+        if (sourceStatus) {
+            sourceStatus.textContent = 'API 離線';
+            sourceStatus.className = 'source-status warning';
+        }
+    }
 }
 
 /**
@@ -607,26 +705,55 @@ function getAccountPnL() {
 }
 
 /**
- * 產生履約價點選器
+ * 產生履約價點選器 (支援即時報價)
  */
-function renderStrikePicker() {
+async function renderStrikePicker() {
     if (!elements.strikePickerGrid) return;
+
+    // 顯示載入中
+    elements.strikePickerGrid.innerHTML = '<div style="text-align: center; padding: 20px;"><span class="loading-spinner"></span> 正在載入即時報價...</div>';
 
     const centerStrike = Math.round(state.tseIndex / 100) * 100;
 
-    // 避免重複渲染相同的中心點
-    if (state.lastRenderedStrikeCenter === centerStrike) return;
+    // 避免重複渲染相同的中心點 (但在切換時仍需重新抓取)
+    if (state.lastRenderedStrikeCenter === centerStrike && state.optionChainData) {
+        renderOptionChainGrid(state.optionChainData);
+        return;
+    }
     state.lastRenderedStrikeCenter = centerStrike;
 
-    const strikes = [];
+    try {
+        // 呼叫後端 API 取得報價鏈
+        // 請求範圍：前後 10 檔 (依照使用者目前的視圖)
+        const range = 10;
+        const source = state.optionSource || 'taifex';
+        const apiUrl = `http://localhost:5000/api/option-chain?center=${centerStrike}&range=${range}&source=${source}`;
 
-    // 產生 ±1000 點範圍的履約價（每 100 點一個）
-    // 使用者要求：大盤是30000就是正負大概1000點的點位，排列可以在修正讓使用者更清楚
-    for (let s = centerStrike - 1000; s <= centerStrike + 1000; s += 100) {
-        strikes.push(s);
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('API Error');
+
+        const data = await response.json();
+        state.optionChainData = data; // 快取資料
+
+        renderOptionChainGrid(data);
+
+    } catch (error) {
+        console.error('報價表載入失敗:', error);
+        // 降級處理：顯示無報價的表格
+        renderOptionChainGrid({
+            center: centerStrike,
+            chain: generateMockChain(centerStrike, 10, false) // false = 不帶價格
+        });
+        showToast('warning', '報價讀取失敗，顯示純履約價表');
     }
+}
 
-    // 產生 T 字報價表 HTML
+/**
+ * 渲染報價表網格 (分離出來的渲染邏輯)
+ */
+function renderOptionChainGrid(data) {
+    if (!elements.strikePickerGrid) return;
+
     let html = `
         <div class="chain-header">
             <span class="chain-col-call">Call (買權)</span>
@@ -636,20 +763,39 @@ function renderStrikePicker() {
         <div class="chain-body">
     `;
 
-    html += strikes.map(strike => {
-        const isAtm = strike === centerStrike;
+    // 確保資料按履約價排序
+    const chain = data.chain.sort((a, b) => a.strike - b.strike);
+
+    html += chain.map(row => {
+        const isAtm = row.strike === data.center;
+
+        // 處理 Call 價格
+        const callPrice = row.call?.price > 0 ? row.call.price : '買';
+        const callBid = row.call?.bid > 0 ? row.call.bid : '賣';
+
+        // 處理 Put 價格
+        const putPrice = row.put?.price > 0 ? row.put.price : '買';
+        const putBid = row.put?.bid > 0 ? row.put.bid : '賣';
+
+        // 價格顯示 (如果有價格就顯示數值，否則顯示買/賣)
+        // 這裡邏輯："賣出"按鈕顯示"Bid"價格(因為你要賣)，"買進"按鈕顯示"Ask"價格(因為你要買)
+        // 但為了簡化且符合一般看盤習慣，通常顯示 Last Price (成交價)
+        // 使用者需求是「成交價」，我們這裡優先顯示 Last Price
+
+        const formatPrice = (p) => typeof p === 'number' ? p : p;
+
         return `
             <div class="chain-row ${isAtm ? 'atm' : ''}">
                 <div class="chain-cell call-cell">
-                    <button class="chain-btn cell-btn sell" data-strike="${strike}" data-type="Call" data-direction="賣出">賣</button>
-                    <button class="chain-btn cell-btn buy" data-strike="${strike}" data-type="Call" data-direction="買進">買</button>
+                    <button class="chain-btn cell-btn sell" data-strike="${row.strike}" data-type="Call" data-direction="賣出" data-price="${row.call?.price || 0}">${formatPrice(row.call?.price || '賣')}</button>
+                    <button class="chain-btn cell-btn buy" data-strike="${row.strike}" data-type="Call" data-direction="買進" data-price="${row.call?.price || 0}">${formatPrice(row.call?.price || '買')}</button>
                 </div>
                 <div class="chain-cell strike-cell">
-                    <span class="chain-strike">${strike}</span>
+                    <span class="chain-strike">${row.strike}</span>
                 </div>
                 <div class="chain-cell put-cell">
-                    <button class="chain-btn cell-btn buy" data-strike="${strike}" data-type="Put" data-direction="買進">買</button>
-                    <button class="chain-btn cell-btn sell" data-strike="${strike}" data-type="Put" data-direction="賣出">賣</button>
+                    <button class="chain-btn cell-btn buy" data-strike="${row.strike}" data-type="Put" data-direction="買進" data-price="${row.put?.price || 0}">${formatPrice(row.put?.price || '買')}</button>
+                    <button class="chain-btn cell-btn sell" data-strike="${row.strike}" data-type="Put" data-direction="賣出" data-price="${row.put?.price || 0}">${formatPrice(row.put?.price || '賣')}</button>
                 </div>
             </div>
         `;
@@ -658,12 +804,28 @@ function renderStrikePicker() {
     html += '</div>';
 
     elements.strikePickerGrid.innerHTML = html;
-    elements.strikePickerGrid.className = 'option-chain-container'; // 切換 class 以套用新樣式
+    elements.strikePickerGrid.className = 'option-chain-container';
 
     // 綁定事件
     elements.strikePickerGrid.querySelectorAll('.chain-btn').forEach(btn => {
         btn.addEventListener('click', handleStrikePickerClick);
     });
+}
+
+/**
+ * 產生本機模擬鏈 (降級用)
+ */
+function generateMockChain(center, range, withPrice) {
+    const chain = [];
+    for (let i = -range; i <= range; i++) {
+        const strike = center + (i * 100);
+        chain.push({
+            strike: strike,
+            call: { price: withPrice ? 100 : 0 },
+            put: { price: withPrice ? 100 : 0 }
+        });
+    }
+    return chain;
 }
 
 /**
@@ -673,6 +835,7 @@ function handleStrikePickerClick(e) {
     const strike = parseInt(e.target.dataset.strike);
     const type = e.target.dataset.type;
     const direction = e.target.dataset.direction;
+    const price = parseFloat(e.target.dataset.price); // 取得價格
 
     // 填入表單
     elements.optType.value = type;
@@ -684,10 +847,24 @@ function handleStrikePickerClick(e) {
         if (radio) radio.checked = true;
     }
 
-    // 捲動到表單
-    elements.optPremium?.focus();
+    // 自動填入價格 (如果有抓到的話)
+    if (price && price > 0 && elements.optPremium) {
+        elements.optPremium.value = price;
 
-    showToast('info', `已選擇 ${direction || ''} ${strike} ${type === 'Call' ? '買權' : '賣權'}，請輸入權利金`);
+        // 觸發價格填入動畫
+        elements.optPremium.classList.remove('price-filled');
+        void elements.optPremium.offsetWidth; // 強制重繪以重新觸發動畫
+        elements.optPremium.classList.add('price-filled');
+    }
+
+    // 捲動到表單並聚焦 (如果沒有價格，聚焦在價格欄位讓使用者輸入；有價格則聚焦確認或口數)
+    if (price && price > 0) {
+        elements.optLots?.focus();
+        showToast('success', `已選擇 ${type} ${strike} @ ${price}`);
+    } else {
+        elements.optPremium?.focus();
+        showToast('info', `已選擇 ${type} ${strike}，請輸入權利金`);
+    }
 }
 
 /**
@@ -1013,9 +1190,9 @@ function updatePnLTable() {
         const etfDelta100 = Math.round(delta100Base * multiplier);
         const etfDelta = formatPnL(etfDelta100);
 
-        // 高亮價平區域
+        // 高亮現價區域（最接近當前指數的列）
         if (Math.abs(change) < 50) {
-            row.classList.add('table-active');
+            row.classList.add('current-price-row');
         }
 
         const changeStr = change >= 0 ? `+${change.toLocaleString()}` : change.toLocaleString();
@@ -1093,6 +1270,13 @@ function updateChart() {
         resultB,
         resultC
     );
+
+    // 控制空狀態顯示
+    const chartEmptyState = document.getElementById('chart-empty-state');
+    const hasAnyPosition = Object.values(state.strategies).some(s => s && s.length > 0);
+    if (chartEmptyState) {
+        chartEmptyState.classList.toggle('visible', !hasAnyPosition);
+    }
 
     updatePnLTable();
 }
@@ -1426,6 +1610,52 @@ function handleClearStrategy() {
     updateChart();
     autoSave();
     showToast('success', `已清空策略 ${current}`);
+}
+
+/**
+ * 取得選擇權報價
+ */
+async function handleGetOptionPrice() {
+    const strike = parseFloat(elements.optStrike.value);
+    const type = elements.optType.value;
+
+    if (!strike) {
+        showToast('warning', '請先輸入履約價');
+        elements.optStrike.focus();
+        return;
+    }
+
+    // UI Loading 狀態
+    if (elements.btnGetPrice) elements.btnGetPrice.disabled = true;
+    if (elements.priceLoading) elements.priceLoading.style.display = 'inline';
+
+    try {
+        // 呼叫後端 API (預設使用與前端同源的 API)
+        const apiUrl = `http://localhost:5000/api/option-price?strike=${strike}&type=${type}`;
+
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+
+        if (data.price) {
+            elements.optPremium.value = data.price;
+
+            // 顯示來源提示
+            const sourceText = data.source === 'fubon' ? '富邦真實行情' : '模擬行情';
+            showToast('success', `已更新報價: ${data.price} (${sourceText})`);
+        } else {
+            showToast('warning', '查無報價');
+        }
+
+    } catch (error) {
+        console.error('取得報價失敗:', error);
+        showToast('error', '取得報價失敗，請確認 API 服務已啟動');
+    } finally {
+        // 解除 Loading 狀態
+        if (elements.btnGetPrice) elements.btnGetPrice.disabled = false;
+        if (elements.priceLoading) elements.priceLoading.style.display = 'none';
+    }
 }
 
 function handleCompare() {

@@ -367,6 +367,27 @@ input[type=number] {
     font-size: 0.85rem;
 }
 
+/* 買入按鈕 - 藍/綠色系 */
+.radio-label.buy-label:has(input:checked) {
+    border-color: var(--success);
+    background: rgba(34, 197, 94, 0.15);
+}
+
+.radio-label.buy-label:has(input:checked) span {
+    color: var(--success-light);
+}
+
+/* 賣出按鈕 - 紅色系 */
+.radio-label.sell-label:has(input:checked) {
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.radio-label.sell-label:has(input:checked) span {
+    color: var(--danger-light);
+}
+
+/* 預設選中狀態（沒有 buy/sell class 時的回退） */
 .radio-label:has(input:checked) {
     border-color: var(--accent);
     background: rgba(59, 130, 246, 0.1);
@@ -375,6 +396,14 @@ input[type=number] {
 .radio-label input {
     width: auto;
     accent-color: var(--accent);
+}
+
+.radio-label.buy-label input {
+    accent-color: var(--success);
+}
+
+.radio-label.sell-label input {
+    accent-color: var(--danger);
 }
 
 .radio-label span {
@@ -1184,8 +1213,11 @@ input[type=number] {
 /* ======== Table ======== */
 .table-container {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 500px;
     border-radius: 10px;
     border: 1px solid var(--border-color);
+    position: relative;
 }
 
 .pnl-table {
@@ -1210,6 +1242,8 @@ input[type=number] {
     letter-spacing: 0.5px;
     position: sticky;
     top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .pnl-table th:first-child,
@@ -1223,6 +1257,22 @@ input[type=number] {
 
 .pnl-table tbody tr:last-child td {
     border-bottom: none;
+}
+
+/* 現價高亮列 */
+.pnl-table tbody tr.current-price-row {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+    border-left: 3px solid var(--danger);
+    position: relative;
+}
+
+.pnl-table tbody tr.current-price-row td {
+    font-weight: 600;
+}
+
+.pnl-table tbody tr.current-price-row td:first-child::before {
+    content: '📍';
+    margin-right: 6px;
 }
 
 /* ======== Footer ======== */
@@ -2824,4 +2874,166 @@ summary.section-title-summary h2 {
     .tab {
         width: 100%;
     }
+}
+
+/* ======== Data Source Switcher ======== */
+.source-switcher {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+
+.source-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.source-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.source-btn {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.source-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.source-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.source-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.source-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+    padding: 4px 10px;
+    background: var(--bg-card);
+    border-radius: 4px;
+}
+
+.source-status.success {
+    color: var(--success);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.source-status.warning {
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+/* ======== Chart Empty State ======== */
+.chart-container {
+    position: relative;
+    min-height: 300px;
+}
+
+.chart-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 40px;
+    display: none;
+}
+
+.chart-empty-state.visible {
+    display: block;
+}
+
+.chart-empty-state .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.chart-empty-state .empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.chart-empty-state .empty-hint {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    max-width: 300px;
+    line-height: 1.5;
+}
+
+/* ======== Price Fill Animation ======== */
+@keyframes priceFillFlash {
+    0% {
+        background-color: var(--bg-primary);
+        box-shadow: none;
+    }
+
+    25% {
+        background-color: rgba(34, 197, 94, 0.3);
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+    }
+
+    50% {
+        background-color: rgba(34, 197, 94, 0.2);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+    }
+
+    100% {
+        background-color: var(--bg-primary);
+        box-shadow: none;
+    }
+}
+
+.form-group input.price-filled {
+    animation: priceFillFlash 0.6s ease-out;
+}
+
+/* ======== Fubon Status Tooltip ======== */
+.source-btn[data-source="fubon"]:disabled::after {
+    content: attr(data-offline-hint);
+    position: absolute;
+    bottom: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+}
+
+.source-btn[data-source="fubon"]:disabled:hover::after {
+    opacity: 1;
+}
+
+.source-btn {
+    position: relative;
 }
