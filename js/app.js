@@ -190,6 +190,9 @@ function bindEvents() {
     // Sidebar Toggle
     elements.sidebarToggle?.addEventListener('click', toggleSidebar);
 
+    // Sidebar Overlay - click to close sidebar
+    document.getElementById('sidebar-overlay')?.addEventListener('click', toggleSidebar);
+
     // Sidebar Inputs
     elements.etfLotsInput?.addEventListener('input', handleSettingsChange);
     elements.etfCostInput?.addEventListener('input', handleSettingsChange);
@@ -1105,7 +1108,15 @@ function updateTime() {
 // ======== 事件處理器 ========
 
 function toggleSidebar() {
-    elements.sidebar.classList.toggle('open');
+    const isOpen = elements.sidebar.classList.toggle('open');
+    // Also toggle overlay and button state for mobile
+    const overlay = document.getElementById('sidebar-overlay');
+    if (overlay) {
+        overlay.classList.toggle('active', isOpen);
+    }
+    if (elements.sidebarToggle) {
+        elements.sidebarToggle.classList.toggle('sidebar-open', isOpen);
+    }
 }
 
 function handleSettingsChange() {

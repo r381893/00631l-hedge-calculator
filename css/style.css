@@ -2672,12 +2672,43 @@ summary.section-title-summary h2 {
         transform: translateX(0);
     }
 
-    /* Sidebar Toggle Button - Visible on mobile */
+    /* Sidebar Toggle Button - Visible on mobile, fixed position */
     .sidebar-toggle {
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 1101;
+        position: fixed;
+        left: 0;
+        top: calc(var(--header-height) + 16px);
+        width: 44px;
+        height: 44px;
+        border-radius: 0 8px 8px 0;
+        z-index: 1200;
+        background: var(--accent);
+        color: white;
+        border: none;
+        box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        transition: left var(--transition-normal);
+    }
+
+    .sidebar-toggle.sidebar-open {
+        left: 280px;
+    }
+
+    /* Sidebar Overlay */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
     }
 
     /* Main content - Full width on mobile */
@@ -2685,18 +2716,6 @@ summary.section-title-summary h2 {
         margin-left: 0;
         padding: 16px;
         width: 100%;
-    }
-
-    /* Overlay when sidebar is open */
-    .sidebar.open::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 280px;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: -1;
     }
 
     /* Cards adjustments */
