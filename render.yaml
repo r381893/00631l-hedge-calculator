@@ -1,10 +1,5 @@
 # Render 部署設定
-# 需要在 Render Dashboard 設定以下環境變數:
-# - FUBON_USER_ID
-# - FUBON_PASSWORD
-# - FUBON_CERT_PATH
-# - FUBON_CERT_PASSWORD
-# - FUBON_API_URL (測試環境用)
+# 使用富邦測試環境 (不需要真實憑證)
 
 services:
   - type: web
@@ -15,3 +10,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      # 富邦測試環境設定 (官方提供)
+      - key: FUBON_USER_ID
+        value: 12345678
+      - key: FUBON_PASSWORD
+        value: 12345678
+      - key: FUBON_CERT_PASSWORD
+        value: 12345678
+      - key: FUBON_API_URL
+        value: wss://neoapitest.fbs.com.tw/TASP/XCPXWS

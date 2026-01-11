@@ -1213,8 +1213,10 @@ input[type=number] {
 /* ======== Table ======== */
 .table-container {
     overflow-x: auto;
-    overflow-y: auto;
-    max-height: 500px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* max-height: 500px; Remove max-height to expand fully */
+
     border-radius: 10px;
     border: 1px solid var(--border-color);
     position: relative;

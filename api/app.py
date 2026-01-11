@@ -195,7 +195,12 @@ class TaifexDataProvider(DataProvider):
                         if strike and call_put:
                             try:
                                 strike_int = int(float(strike))
-                                key = f"{strike_int}_{call_put}"
+                                
+                                # 支援中文 "買權"/"賣權" 或英文 "C"/"P"
+                                is_call = call_put == 'C' or call_put == '買權'
+                                normalized_cp = 'C' if is_call else 'P'
+                                
+                                key = f"{strike_int}_{normalized_cp}"
                                 
                                 settlement = item.get('SettlementPrice', '0')
                                 close = item.get('Close', '0')
@@ -208,7 +213,7 @@ class TaifexDataProvider(DataProvider):
                                 
                                 result[key] = {
                                     'strike': strike_int,
-                                    'type': 'Call' if call_put == 'C' else 'Put',
+                                    'type': 'Call' if is_call else 'Put',
                                     'price': price,
                                     'bid': bid,
                                     'ask': ask,
