@@ -9,7 +9,7 @@ echo ========================================================
 
 :: 0. 安裝 Python 依賴
 if exist "api\requirements.txt" (
-    echo [安裝依賴] 正在安裝必要套件 (Flask, 等)...
+    echo [安裝依賴] 正在安裝必要套件 Flask 等...
     pip install -r api\requirements.txt
 )
 
@@ -22,7 +22,7 @@ echo ========================================================
 
 :: 1. 啟動後端 API (Flask)
 if exist "api\app.py" (
-    echo [啟動後端] 正在啟動 API 伺服器 (Port 5000)...
+    echo [啟動後端] 正在啟動 API 伺服器 Port 5000...
     :: 使用 start 開啟新視窗執行，避免卡住
     start "Backend API Server" cmd /k "cd api && python app.py"
 ) else (

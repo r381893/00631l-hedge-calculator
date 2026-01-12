@@ -20,6 +20,40 @@ echo    端點: http://localhost:5000/api/health
 echo          http://localhost:5000/api/option-price?strike=22000^&type=call
 echo.
 
+rem 自動安裝相依套件（若已安裝會略過）
+echo 📥 正在檢查並安裝 Python 相依套件...
+python -m pip install --upgrade pip >nul 2>&1
+if exist requirements.txt (
+	python -m pip install -r requirements.txt
+) else (
+	echo ⚠ 找不到 requirements.txt，跳過安裝
+)
+
+rem 自動找出可用埠（從 5000 開始，最多嘗試到 5010），若被占用嘗試殺掉該 PID
+setlocal enabledelayedexpansion
+set BASEPORT=5000
+set PORT=%BASEPORT%
+set MAXPORT=5010
+:find_port
+set PID=
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%PORT%"') do set PID=%%a
+if defined PID (
+	echo ⚠ port %PORT% 被 PID %PID% 佔用，嘗試強制終止該程序...
+	taskkill /PID %PID% /F >nul 2>&1
+	if errorlevel 1 (
+		echo ❌ 無法終止 PID %PID%，改嘗試下一個埠...
+		set /a PORT+=1
+		if %PORT% LEQ %MAXPORT% goto find_port
+		echo ❌ 在可嘗試範圍內未找到可用埠，請手動檢查。
+		pause
+		exit /b 1
+	) else (
+		echo ✅ 已終止 PID %PID%，將使用埠 %PORT%
+	)
+)
+
+echo 🚀 啟動應用程式於埠 %PORT%...
+set PORT=%PORT%
 python app.py
 
 pause

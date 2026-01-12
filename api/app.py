@@ -20,6 +20,7 @@ import abc
 import random
 import time
 import requests
+import csv
 from datetime import datetime
 from dotenv import load_dotenv
 import logging
@@ -77,7 +78,8 @@ class DataProvider(abc.ABC):
         """產生選擇權代號"""
         month, year = self.get_contract_month_year()
         year_digit = str(year)[-1]
-        month_codes = "ABCDEFGHIJKL" if option_type.lower() == 'call' else "MNOPQRSTUVWX"
+        # 使用單一月份代碼（交易所月代碼通常與買/賣權無關）
+        month_codes = "ABCDEFGHIJKL"
         month_code = month_codes[month - 1]
         return f"TXO{strike}{month_code}{year_digit}"
 
@@ -164,77 +166,303 @@ class TaifexDataProvider(DataProvider):
             elapsed = (datetime.now() - self.cache['timestamp']).total_seconds()
             if elapsed < self.cache['ttl']:
                 return self.cache['data']
-        
+
+        url = "https://openapi.taifex.com.tw/v1/DailyMarketReportOpt"
+        headers = {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0'
+        }
+
+        logger.info("📡 正在從期交所取得選擇權資料...")
+
+        # 簡單重試機制以應對暫時性網路或伺服器錯誤
+        retries = 3
+        response = None
+        for attempt in range(1, retries + 1):
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                logger.info(f"📶 Taifex fetch attempt {attempt}, status={getattr(response, 'status_code', 'no-response')}")
+                if response is not None and response.status_code == 200:
+                    break
+                else:
+                    snippet = response.text[:500] if response is not None else ''
+                    logger.warning(f"⚠️ Taifex returned status {getattr(response, 'status_code', 'N/A')}: {snippet}")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"❌ Taifex request exception (attempt {attempt}): {e}")
+            time.sleep(1)
+
+        if response is None:
+            logger.error("❌ 無法向期交所發出請求 (response is None), 轉為模擬資料")
+            mock = self._generate_mock_data()
+            self.cache['data'] = mock
+            self.cache['timestamp'] = datetime.now()
+            return mock
+
+        if response.status_code != 200:
+            logger.error(f"❌ 期交所 API 回應錯誤: {response.status_code}, 轉為模擬資料")
+            mock = self._generate_mock_data()
+            self.cache['data'] = mock
+            self.cache['timestamp'] = datetime.now()
+            return mock
+
+        text = response.text
+
+        # 嘗試以 CSV 解析（期交所 DailyMarketReportOpt 可能回傳 CSV）
+        data = None
         try:
-            url = "https://openapi.taifex.com.tw/v1/DailyMarketReportOpt"
-            headers = {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0'
-            }
-            
-            logger.info("📡 正在從期交所取得選擇權資料...")
-            response = requests.get(url, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                # 過濾出 TXO (臺指選擇權) 資料
-                txo_data = [item for item in data if item.get('Contract') == 'TXO']
-                
-                # 轉換為字典格式方便查詢
-                result = {}
-                month, year = self.get_contract_month_year()
-                target_month = f"{year}{month:02d}"
-                
-                for item in txo_data:
-                    contract_month = item.get('ContractMonth(Week)', '')
-                    # 只取當月合約
-                    if contract_month.startswith(target_month[:6]):
-                        strike = item.get('StrikePrice', '')
-                        call_put = item.get('CallPut', '')
-                        
-                        if strike and call_put:
-                            try:
-                                strike_int = int(float(strike))
-                                
-                                # 支援中文 "買權"/"賣權" 或英文 "C"/"P"
-                                is_call = call_put == 'C' or call_put == '買權'
-                                normalized_cp = 'C' if is_call else 'P'
-                                
-                                key = f"{strike_int}_{normalized_cp}"
-                                
-                                settlement = item.get('SettlementPrice', '0')
-                                close = item.get('Close', '0')
-                                best_bid = item.get('BestBid', '0')
-                                best_ask = item.get('BestAsk', '0')
-                                
-                                price = float(close) if close and close != '-' else float(settlement) if settlement and settlement != '-' else 0
-                                bid = float(best_bid) if best_bid and best_bid != '-' else 0
-                                ask = float(best_ask) if best_ask and best_ask != '-' else 0
-                                
-                                result[key] = {
-                                    'strike': strike_int,
-                                    'type': 'Call' if is_call else 'Put',
-                                    'price': price,
-                                    'bid': bid,
-                                    'ask': ask,
-                                    'source': 'taifex'
-                                }
-                            except (ValueError, TypeError):
-                                continue
-                
-                # 更新快取
-                self.cache['data'] = result
-                self.cache['timestamp'] = datetime.now()
-                
-                logger.info(f"✅ 期交所資料取得成功，共 {len(result)} 筆")
-                return result
-            else:
-                logger.error(f"❌ 期交所 API 回應錯誤: {response.status_code}")
-                return None
-                
+            sample_head = text.strip()[:200]
+            is_csv = False
+            # 偵測常見 CSV 標頭（中文或英文）
+            csv_indicators = ['履約價', '到期', 'Contract', 'StrikePrice', '履約價', '買賣權', 'CallPut']
+            for ind in csv_indicators:
+                if ind in sample_head:
+                    is_csv = True
+                    break
+
+            if is_csv:
+                f = io.StringIO(text)
+                reader = csv.DictReader(f)
+                rows = []
+                # 將 CSV 欄位（可能為中文）映射到預期欄位名稱
+
+                # 精準 Mapping（依據你提供的 CSV header）
+                header_map = {
+                    '契約': 'Contract',
+                    'Contract': 'Contract',
+                    '到期月份(週別)': 'ContractMonth',
+                    '到期月份': 'ContractMonth',
+                    '履約價': 'StrikePrice',
+                    'StrikePrice': 'StrikePrice',
+                    '買賣權': 'CallPut',
+                    'CallPut': 'CallPut',
+                    '最後成交價': 'Close',
+                    'Close': 'Close',
+                    '結算價': 'SettlementPrice',
+                    'SettlementPrice': 'SettlementPrice',
+                    '買價': 'BestBid',
+                    'BestBid': 'BestBid',
+                    '賣價': 'BestAsk',
+                    'BestAsk': 'BestAsk'
+                }
+
+                for r in reader:
+                    norm = {}
+                    for k, v in r.items():
+                        if v is None:
+                            continue
+                        key = k.strip()
+                        mapped = header_map.get(key, None)
+                        val = v.strip()
+                        if mapped:
+                            # 轉換特定欄位格式
+                            if mapped == 'StrikePrice':
+                                try:
+                                    norm[mapped] = float(val) if val not in ('', '-') else 0.0
+                                except Exception:
+                                    # 嘗試移除逗號再轉
+                                    try:
+                                        norm[mapped] = float(val.replace(',', ''))
+                                    except Exception:
+                                        norm[mapped] = 0.0
+                            elif mapped == 'Close' or mapped == 'SettlementPrice' or mapped in ('BestBid', 'BestAsk'):
+                                try:
+                                    norm[mapped] = float(val) if val not in ('', '-') else 0.0
+                                except Exception:
+                                    try:
+                                        norm[mapped] = float(val.replace(',', ''))
+                                    except Exception:
+                                        norm[mapped] = 0.0
+                            elif mapped == 'ContractMonth':
+                                norm[mapped] = val.replace(' ', '')
+                            elif mapped == 'CallPut':
+                                # Map Chinese values to Call/Put
+                                if val == '買權':
+                                    norm[mapped] = 'Call'
+                                elif val == '賣權':
+                                    norm[mapped] = 'Put'
+                                else:
+                                    # 可能已是英文 Call/Put
+                                    norm[mapped] = 'Call' if val.lower().startswith('c') else 'Put'
+                            else:
+                                norm[mapped] = val
+                        else:
+                            norm[key] = val
+                    rows.append(norm)
+
+                data = rows
         except Exception as e:
-            logger.error(f"❌ 期交所 API 請求失敗: {e}")
+            logger.warning(f"⚠️ CSV 解析失敗，將嘗試 JSON 解析: {e}")
+
+        # 如果不是 CSV 或 CSV 解析失敗，嘗試 JSON
+        if data is None:
+            try:
+                data = response.json()
+            except Exception as e:
+                text_snippet = text[:2000]
+                logger.error(f"❌ 解析 Taifex JSON 失敗: {e} / response text snippet: {text_snippet}")
+                return None
+
+            # 如果回傳是一個物件（dict），嘗試取出內層 list
+            if isinstance(data, dict):
+                for candidate in ('data', 'Data', 'result', 'items'):
+                    if candidate in data and isinstance(data[candidate], list):
+                        data = data[candidate]
+                        break
+
+            if not isinstance(data, list):
+                logger.error(f"❌ Taifex 回傳格式非清單，keys={list(data.keys()) if isinstance(data, dict) else type(data)}")
+                return None
+
+        # 輔助函式：從多個可能的欄位名稱中取值
+        def get_field(item, candidates):
+            for k in candidates:
+                if k in item and item[k] not in (None, ''):
+                    return item[k]
+            # 嘗試不區分大小寫的鍵
+            lower_map = {kk.lower(): vv for kk, vv in item.items()}
+            for k in candidates:
+                if k.lower() in lower_map and lower_map[k.lower()] not in (None, ''):
+                    return lower_map[k.lower()]
             return None
+
+        # 過濾出 TXO (臺指選擇權) 資料，容錯檢查 Contract 欄位
+        txo_data = []
+        for item in data:
+            contract = get_field(item, ['Contract', 'contract', 'ContractName'])
+            if contract and str(contract).upper().startswith('TXO'):
+                txo_data.append(item)
+
+        if not txo_data:
+            logger.warning(f"⚠️ 未找到 TXO 資料，原始回傳樣本 keys: {[list(d.keys()) for d in data[:3]]}")
+
+        # 轉換為字典格式方便查詢
+        result = {}
+        month, year = self.get_contract_month_year()
+        target_month = f"{year}{month:02d}"
+
+        for item in txo_data:
+            contract_month = get_field(item, ['ContractMonth(Week)', 'ContractMonth', 'ContractMonthWeek', 'Contract Month']) or ''
+            # 只取當月合約（比對前 6 碼 YYYYMM）
+            if not str(contract_month).startswith(str(target_month)[:6]):
+                continue
+
+            strike_val = get_field(item, ['StrikePrice', 'Strike', 'StrikePrice '])
+            callput = get_field(item, ['CallPut', 'Call/Put', 'Type', 'BuySell'])
+
+            if not strike_val or not callput:
+                logger.debug(f"跳過不完整項目 keys={list(item.keys())}")
+                continue
+
+            try:
+                strike_int = int(float(strike_val))
+            except (ValueError, TypeError):
+                logger.debug(f"無法解析 strike: {strike_val} in item keys={list(item.keys())}")
+                continue
+
+            # 支援各種表示法
+            cp = str(callput).strip().lower()
+            is_call = cp in ('c', 'call', '買權', 'buy')
+            normalized_cp = 'C' if is_call else 'P'
+
+            key = f"{strike_int}_{normalized_cp}"
+
+            settlement = get_field(item, ['SettlementPrice', 'Settlement', 'Settle']) or '0'
+            close = get_field(item, ['Close', 'ClosingPrice']) or '0'
+            best_bid = get_field(item, ['BestBid', 'Bid']) or '0'
+            best_ask = get_field(item, ['BestAsk', 'Ask']) or '0'
+
+            try:
+                price = float(close) if close and close != '-' else float(settlement) if settlement and settlement != '-' else 0
+            except Exception:
+                price = 0
+            try:
+                bid = float(best_bid) if best_bid and best_bid != '-' else 0
+            except Exception:
+                bid = 0
+            try:
+                ask = float(best_ask) if best_ask and best_ask != '-' else 0
+            except Exception:
+                ask = 0
+
+            result[key] = {
+                'strike': strike_int,
+                'type': 'Call' if is_call else 'Put',
+                'price': price,
+                'bid': bid,
+                'ask': ask,
+                'source': 'taifex'
+            }
+
+        # 更新快取
+        self.cache['data'] = result
+        self.cache['timestamp'] = datetime.now()
+
+        logger.info(f"✅ 期交所資料取得成功，共 {len(result)} 筆")
+        return result
+
+    def _generate_mock_data(self):
+        """當無法從期交所取得資料時，產生模擬選擇權資料。輸出格式與真實解析後的 result 相同。
+
+        模擬參數可透過環境變數覆寫：
+        TAIFEX_MOCK_INDEX, TAIFEX_MOCK_VOL, TAIFEX_MOCK_DTE, TAIFEX_MOCK_R
+        """
+        # 讀取模擬參數
+        try:
+            index = float(os.getenv('TAIFEX_MOCK_INDEX', '23500'))
+        except Exception:
+            index = 23500.0
+        try:
+            vol = float(os.getenv('TAIFEX_MOCK_VOL', '0.2'))
+        except Exception:
+            vol = 0.2
+        try:
+            dte = int(os.getenv('TAIFEX_MOCK_DTE', '14'))
+        except Exception:
+            dte = 14
+        try:
+            r = float(os.getenv('TAIFEX_MOCK_R', '0.015'))
+        except Exception:
+            r = 0.015
+
+        # 建立履約價範圍
+        span = int(os.getenv('TAIFEX_MOCK_SPAN', '1000'))
+        step = int(os.getenv('TAIFEX_MOCK_STEP', '100'))
+        strikes = list(range(int(index) - span, int(index) + span + 1, step))
+
+        result = {}
+        # base time value: 估算 ATM 時間價值，與波動率與到期日相關
+        import math
+        T = max(1, dte) / 365.0
+        base_time_value = max(5.0, index * vol * math.sqrt(T) * 0.2)
+
+        for s in strikes:
+            distance = abs(index - s)
+            # 時間價值簡單衰減模型
+            time_value = max(1.0, base_time_value * math.exp(-distance / 800.0))
+
+            # Call and Put
+            call_price = max(0.0, index - s) + time_value
+            put_price = max(0.0, s - index) + time_value
+
+            # 建立 key 與條目
+            for is_call, price in ((True, call_price), (False, put_price)):
+                cp = 'C' if is_call else 'P'
+                strike_int = int(s)
+                key = f"{strike_int}_{cp}"
+                bid = round(price * 0.97, 2)
+                ask = round(price * 1.03, 2)
+
+                result[key] = {
+                    'strike': strike_int,
+                    'type': 'Call' if is_call else 'Put',
+                    'price': round(price, 2),
+                    'bid': bid,
+                    'ask': ask,
+                    'source': 'taifex_mock'
+                }
+
+        logger.info(f"🔧 已產生模擬期交所資料，共 {len(result)} 筆 (index={index}, vol={vol}, dte={dte})")
+        return result
     
     def get_tx_price(self) -> dict:
         """期交所無提供即時價格，回傳空值"""
@@ -299,13 +527,22 @@ class FubonDataProvider(DataProvider):
                 self.cert_password
             )
             
-            if response and response.is_success:
-                self.is_logged_in = True
-                logger.info("✅ Fubon API 登入成功")
-            else:
-                error_msg = response.message if response else "未知錯誤"
-                self.login_error_message = error_msg
-                logger.error(f"❌ Fubon API 登入失敗: {error_msg}")
+            try:
+                success = getattr(response, 'is_success', None)
+                if success:
+                    self.is_logged_in = True
+                    logger.info("✅ Fubon API 登入成功")
+                else:
+                    # 嘗試取得更多錯誤資訊
+                    error_msg = None
+                    if response is not None:
+                        error_msg = getattr(response, 'message', None) or getattr(response, 'error', None) or repr(response)
+                    error_msg = error_msg or "未知錯誤"
+                    self.login_error_message = error_msg
+                    logger.error(f"❌ Fubon API 登入失敗: {error_msg}")
+            except Exception as e:
+                self.login_error_message = str(e)
+                logger.error(f"❌ Fubon API 登入失敗 (解析回應時錯誤): {e}")
                 
         except ImportError:
             self.login_error_message = "找不到 fubon-neo 套件"
@@ -433,23 +670,51 @@ def init_fubon_provider():
     
     user_id = os.getenv('FUBON_USER_ID')
     password = os.getenv('FUBON_PASSWORD')
-    cert_path = os.getenv('FUBON_CERT_PATH', '')
-    cert_password = os.getenv('FUBON_CERT_PASSWORD', '')
+    cert_path = os.getenv('FUBON_CERT_PATH')
+    cert_password = os.getenv('FUBON_CERT_PASSWORD')
     api_url = os.getenv('FUBON_API_URL')
     
+    # 檢查必填欄位：帳號、密碼
     if not all([user_id, password]):
-        logger.info("[INFO] 未設定富邦 API 憑證")
+        logger.info("ℹ️ 未設定富邦 API 帳號密碼，跳過初始化")
         return None
+        
+    # 檢查憑證欄位：如果沒有憑證路徑，也跳過初始化 (避免 SDK 崩潰)
+    if not cert_path or not cert_path.strip() or not cert_password or not cert_password.strip():
+        logger.info("ℹ️ 未設定富邦 API 憑證，跳過初始化 (避免 SDK Crash)")
+        return None
+
+    # 檢查憑證檔案是否存在，支援絕對與相對路徑
+    raw_cert = cert_path.strip()
+    tried_paths = []
+    cert_abs = os.path.expanduser(raw_cert)
+    tried_paths.append(cert_abs)
+    if not os.path.isabs(cert_abs):
+        # 嘗試相對於此模組的路徑 (api/)
+        module_dir = os.path.dirname(__file__)
+        alt = os.path.join(module_dir, raw_cert)
+        tried_paths.append(alt)
+        cert_abs = alt if os.path.exists(alt) else cert_abs
+
+    if not os.path.exists(cert_abs):
+        logger.warning(f"⚠️ 找不到憑證檔案 (嘗試過): {tried_paths}")
+        return None
+
+    # 使用解析後的絕對路徑
+    cert_path = cert_abs
     
-    fubon_provider = FubonDataProvider(
-        user_id=user_id,
-        password=password,
-        cert_path=cert_path,
-        cert_password=cert_password,
-        api_url=api_url
-    )
-    
-    return fubon_provider if fubon_provider.is_logged_in else None
+    try:
+        fubon_provider = FubonDataProvider(
+            user_id=user_id,
+            password=password,
+            cert_path=cert_path,
+            cert_password=cert_password.strip(),
+            api_url=api_url
+        )
+        return fubon_provider if fubon_provider.is_logged_in else None
+    except BaseException as e:
+        logger.error(f"❌ 初始化富邦 API 失敗 (嚴重錯誤): {e}")
+        return None
 
 def get_provider(source: str, center: int = None) -> DataProvider:
     """根據指定來源取得對應的資料提供者"""
@@ -581,6 +846,65 @@ def get_available_sources():
         "taifex_available": taifex_provider.is_available()
     })
 
+
+@app.route('/api/taifex-debug', methods=['GET'])
+def taifex_debug():
+    """除錯用：直接向期交所 OpenAPI 發出請求並回傳狀態碼與回應片段，方便快速定位問題。"""
+    url = "https://openapi.taifex.com.tw/v1/DailyMarketReportOpt"
+    headers = {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0'
+    }
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        snippet = resp.text[:4000]
+        return jsonify({
+            'status_code': resp.status_code,
+            'text_snippet': snippet,
+            'headers': {k: v for k, v in resp.headers.items()}
+        })
+    except Exception as e:
+        logger.error(f"❌ Taifex debug request failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/taifex-cache', methods=['GET'])
+def taifex_cache():
+    """回傳伺服器快取的 Taifex 資料摘要，方便排查快取/解析問題。"""
+    cache = taifex_provider.cache if taifex_provider else None
+    if not cache or not cache.get('data'):
+        return jsonify({'available': False, 'message': 'no cache'}), 200
+
+    data = cache.get('data')
+    keys = list(data.keys())[:20]
+    sample = {k: data[k] for k in keys}
+    return jsonify({
+        'available': True,
+        'cached_count': len(data),
+        'timestamp': cache.get('timestamp').isoformat() if cache.get('timestamp') else None,
+        'sample_keys': keys,
+        'sample': sample
+    })
+
+
+@app.route('/api/fubon-debug', methods=['GET'])
+def fubon_debug():
+    """回傳富邦 Provider 的狀態與相關環境變數（敏感資訊會遮蔽）。"""
+    env = {
+        'FUBON_USER_ID': (os.getenv('FUBON_USER_ID')[:3] + '***') if os.getenv('FUBON_USER_ID') else None,
+        'FUBON_API_URL': os.getenv('FUBON_API_URL'),
+        'FUBON_CERT_PATH': (os.getenv('FUBON_CERT_PATH') and ('...' + os.path.basename(os.getenv('FUBON_CERT_PATH')))) or None
+    }
+
+    info = {
+        'env': env,
+        'fubon_provider_exists': fubon_provider is not None,
+        'fubon_logged_in': getattr(fubon_provider, 'is_logged_in', False) if fubon_provider else False,
+        'fubon_login_error': getattr(fubon_provider, 'login_error_message', None) if fubon_provider else None
+    }
+
+    return jsonify(info)
+
 # 應用程式啟動時初始化
 with app.app_context():
     # 嘗試初始化富邦 API (可選)
@@ -591,5 +915,21 @@ with app.app_context():
     taifex_provider._fetch_data()
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # 嘗試綁定 PORT（如果被占用則自動嘗試下一個埠），避免需要手動 kill
+    base_port = int(os.getenv('PORT', 5000))
+    max_tries = 11
+    started = False
+    for i in range(max_tries):
+        try_port = base_port + i
+        try:
+            logger.info(f"🚀 嘗試啟動伺服器於 port={try_port} (attempt {i+1}/{max_tries})")
+            app.run(host='0.0.0.0', port=try_port, debug=True)
+            started = True
+            break
+        except OSError as e:
+            logger.warning(f"⚠️ 無法綁定 port {try_port}: {e}")
+            # 等待後重試
+            time.sleep(0.5)
+
+    if not started:
+        logger.error(f"❌ 無法在 ports {base_port}-{base_port+max_tries-1} 啟動伺服器，請檢查系統或防火牆設定。")
