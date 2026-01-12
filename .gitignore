@@ -19,3 +19,6 @@ Thumbs.db
 # Local env
 .env
 .env.local
+
+# Ignore Time value monitoring folder (large logs)
+Time value monitoring 7/
