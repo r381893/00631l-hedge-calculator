@@ -1601,6 +1601,55 @@ summary.section-title-summary h2 {
 }
 
 /* ======== Responsive ======== */
+@media (max-width: 1600px) {
+
+    /* 稍微縮小基準字體，讓畫面能容納更多內容 */
+    html {
+        font-size: 15px;
+    }
+
+    :root {
+        --sidebar-width: 260px;
+        /* 收窄側邊欄 */
+    }
+
+    .main-content {
+        max-width: 100%;
+        /* 確保填滿剩餘空間 */
+    }
+
+    .comparison-grid {
+        gap: 10px;
+        /* 縮小網格間距 */
+    }
+
+    .strategy-panel {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 1366px) {
+    :root {
+        --sidebar-width: 240px;
+    }
+
+    .comparison-grid {
+        /* 在更小的筆電螢幕上，可能需要換行 */
+        /* 暫時保持 3 欄，但更緊湊 */
+        gap: 8px;
+    }
+
+    .strategy-column {
+        padding: 8px;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 6px 8px;
+        /* 縮小輸入框 padding */
+    }
+}
+
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);

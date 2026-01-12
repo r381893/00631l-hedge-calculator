@@ -17,6 +17,7 @@ const state = {
     etfCurrentPrice: 100,
     hedgeRatio: 0.2,
     tseIndex: 23000,
+    referenceIndex: 23000, // 基準指數
     priceRange: 1500,
     accountCost: 0, // 帳戶成本
     accountBalance: 0, // 目前餘額
@@ -80,6 +81,7 @@ function cacheElements() {
     elements.suggestedLots = document.getElementById('suggested-lots');
     elements.suggestedCalc = document.getElementById('suggested-calc');
     elements.priceRangeInput = document.getElementById('price-range');
+    elements.referenceIndexInput = document.getElementById('reference-index');
     elements.currentIndexDisplay = document.getElementById('current-index-display');
 
     // File Operations - 移除
@@ -205,6 +207,7 @@ function bindEvents() {
     elements.accountCostInput?.addEventListener('input', handleSettingsChange);
     elements.accountBalanceInput?.addEventListener('input', handleSettingsChange);
     elements.priceRangeInput?.addEventListener('input', handleSettingsChange);
+    elements.referenceIndexInput?.addEventListener('input', handleSettingsChange);
 
     // 已實現損益輸入
     elements.realizedPnLA?.addEventListener('input', handleRealizedPnLChange);
@@ -406,6 +409,7 @@ async function initApp() {
             state.hedgeRatio = savedData.hedgeRatio || 0.2;
             state.priceRange = savedData.priceRange || 1500;
             state.tseIndex = savedData.tseIndex || 23000;
+            state.referenceIndex = savedData.referenceIndex || state.tseIndex; // Default to current index if not saved
             state.accountCost = savedData.accountCost || 0;
             state.accountBalance = savedData.accountBalance || 0;
             state.currentStrategy = savedData.currentStrategy || 'A';
@@ -507,6 +511,8 @@ async function fetchMarketPrices() {
                 const tsePrice = tseData?.chart?.result?.[0]?.meta?.regularMarketPrice;
                 if (tsePrice && tsePrice > 1000) {
                     state.tseIndex = Math.round(tsePrice * 100) / 100;
+                    // 如果尚未設定基準指數 (例如第一次載入)，預設使用當前指數
+                    if (!state.referenceIndex) state.referenceIndex = state.tseIndex;
                     successfulProxy = proxy;
                     tseSuccess = true;
                     console.log('✅ 加權指數抓取成功:', state.tseIndex, '使用:', proxy);
@@ -612,6 +618,9 @@ function updateSidebarInputs() {
     }
     if (elements.priceRangeInput && document.activeElement !== elements.priceRangeInput) {
         elements.priceRangeInput.value = state.priceRange;
+    }
+    if (elements.referenceIndexInput && document.activeElement !== elements.referenceIndexInput) {
+        elements.referenceIndexInput.value = state.referenceIndex;
     }
     if (elements.accountCostInput && document.activeElement !== elements.accountCostInput) {
         elements.accountCostInput.value = state.accountCost;
@@ -1117,6 +1126,7 @@ function updatePnLTable() {
     // 計算策略 A
     const resultA = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
+        referenceIndex: state.referenceIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1127,6 +1137,7 @@ function updatePnLTable() {
     // 計算策略 B
     const resultB = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
+        referenceIndex: state.referenceIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1136,6 +1147,7 @@ function updatePnLTable() {
     // 計算策略 C
     const resultC = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
+        referenceIndex: state.referenceIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1229,6 +1241,7 @@ function updateChart() {
     // 計算策略 A
     const resultA = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
+        referenceIndex: state.referenceIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1241,6 +1254,7 @@ function updateChart() {
     if (state.strategies.B.length > 0) {
         resultB = Calculator.calculatePnLCurve({
             centerPrice: state.tseIndex,
+            referenceIndex: state.referenceIndex,
             priceRange: state.priceRange,
             etfLots: state.etfLots,
             etfCost: state.etfCost,

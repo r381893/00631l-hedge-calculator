@@ -118,13 +118,16 @@ function calcRealizedPnL(position, closePrice) {
  */
 function calculatePnLCurve(params) {
     const {
-        centerPrice,    // 當前指數
+        centerPrice,    // 當前指數 (Simulation Center)
+        referenceIndex, // 基準指數 (Base Index for ETF PnL) - Optional
         priceRange,     // 模擬範圍
         etfLots,        // ETF 張數
         etfCost,        // ETF 成本
         etfCurrent,     // ETF 現價
         positions       // 選擇權/期貨倉位陣列
     } = params;
+
+    const baseIndex = referenceIndex || centerPrice; // Default to centerPrice if no reference provided
 
     const prices = [];
     const etfProfits = [];
@@ -136,8 +139,8 @@ function calculatePnLCurve(params) {
         const price = centerPrice + offset;
         prices.push(price);
 
-        // ETF 損益
-        const etfPnL = calcETFPnL(price, centerPrice, etfLots, etfCost, etfCurrent);
+        // ETF 損益 (Use baseIndex)
+        const etfPnL = calcETFPnL(price, baseIndex, etfLots, etfCost, etfCurrent);
         etfProfits.push(etfPnL);
 
         // 倉位組合損益

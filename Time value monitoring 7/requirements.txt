@@ -1,0 +1,10 @@
+streamlit
+pandas
+fubon-neo
+
+plotly
+firebase-admin
+python-dotenv
+
+yfinance
+streamlit-autorefresh
