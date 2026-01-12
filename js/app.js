@@ -1126,7 +1126,7 @@ function updatePnLTable() {
     // 計算策略 A
     const resultA = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
-        referenceIndex: state.referenceIndex,
+        // referenceIndex: state.referenceIndex, // DONT USE: Use centerPrice (TSE Index) as anchor
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1137,7 +1137,7 @@ function updatePnLTable() {
     // 計算策略 B
     const resultB = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
-        referenceIndex: state.referenceIndex,
+        // referenceIndex: state.referenceIndex, // DONT USE
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1147,7 +1147,7 @@ function updatePnLTable() {
     // 計算策略 C
     const resultC = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
-        referenceIndex: state.referenceIndex,
+        // referenceIndex: state.referenceIndex, // DONT USE
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1241,7 +1241,7 @@ function updateChart() {
     // 計算策略 A
     const resultA = Calculator.calculatePnLCurve({
         centerPrice: state.tseIndex,
-        referenceIndex: state.referenceIndex,
+        // referenceIndex: state.referenceIndex, // DONT USE
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1254,7 +1254,7 @@ function updateChart() {
     if (state.strategies.B.length > 0) {
         resultB = Calculator.calculatePnLCurve({
             centerPrice: state.tseIndex,
-            referenceIndex: state.referenceIndex,
+            // referenceIndex: state.referenceIndex, // DONT USE
             priceRange: state.priceRange,
             etfLots: state.etfLots,
             etfCost: state.etfCost,
