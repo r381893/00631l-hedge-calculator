@@ -1325,6 +1325,11 @@ function handleSettingsChange() {
     state.accountCost = parseFloat(elements.accountCostInput?.value) || 0;
     state.accountBalance = parseFloat(elements.accountBalanceInput?.value) || 0;
     state.priceRange = parseInt(elements.priceRangeInput.value) || 1500;
+    // 同步基準指數輸入到 state，確保會被儲存
+    if (elements.referenceIndexInput) {
+        const refVal = parseInt(elements.referenceIndexInput.value);
+        state.referenceIndex = Number.isNaN(refVal) ? state.tseIndex : refVal;
+    }
 
     // 更新帳戶損益顯示
     updateAccountPnLDisplay();
@@ -1718,7 +1723,11 @@ function autoSave() {
                 optionPositions: state.strategies.A,
                 strategyB: { positions: state.strategies.B },
                 strategyC: { positions: state.strategies.C },
-                realizedPnL: state.realizedPnL
+                realizedPnL: state.realizedPnL,
+                // Persist reference index and tseIndex so user's input survives reload
+                referenceIndex: state.referenceIndex,
+                tseIndex: state.tseIndex,
+                priceRange: state.priceRange
             });
 
             if (success) {
