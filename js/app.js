@@ -1173,11 +1173,14 @@ function updatePnLTable() {
         return `<span class="${cls}">${sign}${val.toLocaleString()}</span>`;
     };
 
-    // 計算固定的「每 100 點損益基礎值」
-    // 公式：股數 × 現價 × 2倍槓桿 × (100 / 指數) 
-    // 這代表指數每移動 100 點，ETF 損益的線性化估算
-    const shares = state.etfLots * Calculator.CONSTANTS.ETF_SHARES_PER_LOT;
-    const delta100Base = shares * state.etfCurrentPrice * Calculator.CONSTANTS.LEVERAGE_00631L * (100 / state.tseIndex);
+    // 計算 ETF 在基準指數時的損益 (作為變化的基準點 0)
+    const pnlAtRef = Calculator.calcETFPnL(
+        state.referenceIndex,
+        state.referenceIndex,
+        state.etfLots,
+        state.etfCost,
+        state.etfCurrentPrice
+    );
 
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
@@ -1194,13 +1197,10 @@ function updatePnLTable() {
 
         const change = prices[i] - state.tseIndex;
 
-        // 計算 ETF Δ100：每 100 點對應 delta100Base，以此類推
-        // 變動 100 點 = 1 倍 delta100Base
-        // 變動 200 點 = 2 倍 delta100Base
-        // 變動 -100 點 = -1 倍 delta100Base（負值表示虧損）
-        const multiplier = change / 100;
-        const etfDelta100 = Math.round(delta100Base * multiplier);
-        const etfDelta = formatPnL(etfDelta100);
+        // 計算 ETF 損益變化：相對於基準指數的損益變動
+        // 這樣在 基準指數 (Reference Index) 位置時，變化量會是 0
+        const etfDeltaVal = etfPnL - pnlAtRef;
+        const etfDelta = formatPnL(Math.round(etfDeltaVal));
 
         // 高亮現價區域（最接近當前指數的列）
         if (Math.abs(change) < 50) {
