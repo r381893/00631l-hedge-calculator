@@ -1176,7 +1176,7 @@ function updatePnLTable() {
     // 計算 ETF 在基準指數時的損益 (作為變化的基準點 0)
     const pnlAtRef = Calculator.calcETFPnL(
         state.referenceIndex,
-        state.referenceIndex,
+        state.tseIndex,
         state.etfLots,
         state.etfCost,
         state.etfCurrentPrice
