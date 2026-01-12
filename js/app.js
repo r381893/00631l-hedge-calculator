@@ -1213,9 +1213,16 @@ function updatePnLTable() {
         const indexValue = Math.round(prices[i] / 100) * 100;
         const indexStr = indexValue.toLocaleString();
 
+        // 判斷是否為基準指數所在列
+        let indexDisplay = indexStr;
+        if (Math.abs(indexValue - state.referenceIndex) < 50) {
+            indexDisplay = `<span class="reference-badge" title="基準指數">🎯 ${indexStr}</span>`;
+            row.classList.add('reference-price-row');
+        }
+
         row.innerHTML = `
             <td>${changeStr}</td>
-            <td class="col-index">${indexStr}</td>
+            <td class="col-index">${indexDisplay}</td>
             <td class="col-strategy-a">${formatPnL(pnlA)}</td>
             <td class="col-strategy-b">${formatPnL(pnlB)}</td>
             <td class="col-strategy-c">${formatPnL(pnlC)}</td>
