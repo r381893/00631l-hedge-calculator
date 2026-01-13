@@ -212,25 +212,29 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
         }
     }
 
-    // 策略 A 總損益
+    // 策略 A 損益
+    // 如果是比較模式 (dataB/dataC 存在)，改為顯示「選擇權損益 (Option PnL)」，不含 ETF
+    // 如果是單一模式，顯示「組合總損益 (Total PnL)」，含 ETF
+    const isComparison = !!(dataB || dataC);
+
     datasets.push({
-        label: (dataB || dataC) ? '策略 A 損益' : '組合總損益',
-        data: toScatterData(combinedProfits),
+        label: isComparison ? '策略 A 損益' : '組合總損益',
+        data: toScatterData(isComparison ? data.optionProfits : combinedProfits),
         borderColor: '#ef4444', // 红色
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         borderWidth: 3,
         pointRadius: 0,
         pointHoverRadius: 6,
         tension: 0.1,
-        fill: (!dataB && !dataC), // 如果有比較，就不填滿背景
+        fill: !isComparison, // 如果有比較，就不填滿背景
         showLine: true
     });
 
-    // 策略 B 總損益 (如果有)
+    // 策略 B 損益 (如果有)
     if (dataB) {
         datasets.push({
             label: '策略 B 損益',
-            data: toScatterData(dataB.combinedProfits),
+            data: toScatterData(dataB.optionProfits), // 使用 optionProfits
             borderColor: '#3b82f6', // 藍色
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             borderWidth: 3,
@@ -242,11 +246,11 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
         });
     }
 
-    // 策略 C 總損益 (如果有)
+    // 策略 C 損益 (如果有)
     if (dataC) {
         datasets.push({
             label: '策略 C 損益',
-            data: toScatterData(dataC.combinedProfits),
+            data: toScatterData(dataC.optionProfits), // 使用 optionProfits
             borderColor: '#69f0ae', // 綠色
             backgroundColor: 'rgba(105, 240, 174, 0.1)',
             borderWidth: 3,
