@@ -160,7 +160,7 @@ function initPnLChart(canvasId) {
  * @param {boolean} showOptions - 是否顯示選擇權曲線
  * @param {Object} dataB - 策略 B 計算結果 (選填)
  */
-function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, dataB = null, dataC = null) {
+function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, dataB = null, dataC = null, referenceIndex = null) {
     if (!pnlChart) {
         initPnLChart('pnl-chart');
     }
@@ -273,8 +273,16 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
                 type: 'line',
                 yMin: 0,
                 yMax: 0,
-                borderColor: 'rgba(148, 163, 184, 0.5)',
-                borderWidth: 1
+                borderColor: 'rgba(148, 163, 184, 0.8)', // Darker grey for visibility
+                borderWidth: 1.5,
+                label: {
+                    display: true,
+                    content: '損益平衡 (0)',
+                    position: 'end',
+                    backgroundColor: 'rgba(148, 163, 184, 0.8)',
+                    color: 'white',
+                    font: { size: 10 }
+                }
             },
             currentLine: {
                 type: 'line',
@@ -292,6 +300,24 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
                     font: {
                         size: 11
                     }
+                }
+            },
+            referenceLine: { // New Reference Line
+                type: 'line',
+                xMin: referenceIndex,
+                xMax: referenceIndex,
+                borderColor: 'rgba(167, 139, 250, 0.7)', // Purple accent
+                borderWidth: 2,
+                borderDash: [2, 4],
+                display: !!referenceIndex, // Only show if valid
+                label: {
+                    display: true,
+                    content: '基準點',
+                    position: 'start',
+                    yAdjust: 20, // Offset to avoid overlap with Current
+                    backgroundColor: 'rgba(167, 139, 250, 0.8)',
+                    color: 'white',
+                    font: { size: 11 }
                 }
             }
         }

@@ -1332,7 +1332,8 @@ function updateChart() {
         true,
         state.strategies.A.length > 0,
         resultB,
-        resultC
+        resultC,
+        state.referenceIndex // Pass Reference Index
     );
 
     // 更新圖表說明 (Legend)
