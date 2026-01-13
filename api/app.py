@@ -884,7 +884,17 @@ def get_option_chain():
             "put": put_data
         })
     
+    # 嘗試取得供應商的最新指數價格
+    current_index_price = 0
+    try:
+        tx_data = provider.get_tx_price()
+        if tx_data and 'price' in tx_data:
+            current_index_price = tx_data['price']
+    except Exception:
+        pass
+
     return jsonify({
+        "center_price": current_index_price,
         "center": center,
         "range": price_range,
         "step": step,
