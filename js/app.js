@@ -1301,6 +1301,30 @@ function updateChart() {
         resultC
     );
 
+    // 更新圖表說明 (Legend)
+    const legendEl = document.querySelector('.chart-legend');
+    if (legendEl) {
+        if (resultB || resultC) {
+            // 比較模式：只顯示策略 A/B/C
+            legendEl.innerHTML = `
+                📊 <b>圖例說明：</b>
+                <span class="legend-item" style="color:#ef4444">🔴 策略 A</span> |
+                ${resultB ? '<span class="legend-item" style="color:#3b82f6">🔵 策略 B</span> |' : ''}
+                ${resultC ? '<span class="legend-item" style="color:#69f0ae">🟢 策略 C</span> |' : ''}
+                <span class="legend-item legend-current">Current</span> = 現價
+            `;
+        } else {
+            // 單一模式：顯示詳細說明
+            legendEl.innerHTML = `
+                📊 <b>圖例說明：</b>
+                <span class="legend-item legend-etf">00631L</span> = ETF損益 |
+                <span class="legend-item legend-option">Options</span> = 選擇權組合 |
+                <span class="legend-item legend-total">Total P/L</span> = 組合總損益 |
+                <span class="legend-item legend-current">Current</span> = 現價
+            `;
+        }
+    }
+
     // 控制空狀態顯示
     const chartEmptyState = document.getElementById('chart-empty-state');
     const hasAnyPosition = Object.values(state.strategies).some(s => s && s.length > 0);
