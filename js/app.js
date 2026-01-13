@@ -1125,8 +1125,8 @@ function updatePremiumSummary() {
 function updatePnLTable() {
     // 計算策略 A
     const resultA = Calculator.calculatePnLCurve({
-        centerPrice: state.tseIndex,
-        // referenceIndex: state.referenceIndex, // DONT USE: Use centerPrice (TSE Index) as anchor
+        centerPrice: state.referenceIndex, // Center grid on Reference Index
+        referenceIndex: state.tseIndex,    // Base math on Current Index (for ETF projection)
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1136,8 +1136,8 @@ function updatePnLTable() {
 
     // 計算策略 B
     const resultB = Calculator.calculatePnLCurve({
-        centerPrice: state.tseIndex,
-        // referenceIndex: state.referenceIndex, // DONT USE
+        centerPrice: state.referenceIndex,
+        referenceIndex: state.tseIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1146,8 +1146,8 @@ function updatePnLTable() {
     });
     // 計算策略 C
     const resultC = Calculator.calculatePnLCurve({
-        centerPrice: state.tseIndex,
-        // referenceIndex: state.referenceIndex, // DONT USE
+        centerPrice: state.referenceIndex,
+        referenceIndex: state.tseIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1195,15 +1195,17 @@ function updatePnLTable() {
         const totalPnLB = etfPnL + pnlB + accountPnL;
         const totalPnLC = etfPnL + pnlC + accountPnL;
 
-        const change = prices[i] - state.tseIndex;
+        // Change relative to Reference Index (Base Point)
+        const change = prices[i] - state.referenceIndex;
 
         // 計算 ETF 損益變化：相對於基準指數的損益變動
         // 這樣在 基準指數 (Reference Index) 位置時，變化量會是 0
         const etfDeltaVal = etfPnL - pnlAtRef;
         const etfDelta = formatPnL(Math.round(etfDeltaVal));
 
+
         // 高亮現價區域（最接近當前指數的列）
-        if (Math.abs(change) < 50) {
+        if (Math.abs(prices[i] - state.tseIndex) < 50) {
             row.classList.add('current-price-row');
         }
 
@@ -1247,8 +1249,8 @@ function updatePnLTable() {
 function updateChart() {
     // 計算策略 A
     const resultA = Calculator.calculatePnLCurve({
-        centerPrice: state.tseIndex,
-        // referenceIndex: state.referenceIndex, // DONT USE
+        centerPrice: state.referenceIndex,
+        referenceIndex: state.tseIndex,
         priceRange: state.priceRange,
         etfLots: state.etfLots,
         etfCost: state.etfCost,
@@ -1260,8 +1262,8 @@ function updateChart() {
     let resultB = null;
     if (state.strategies.B.length > 0) {
         resultB = Calculator.calculatePnLCurve({
-            centerPrice: state.tseIndex,
-            // referenceIndex: state.referenceIndex, // DONT USE
+            centerPrice: state.referenceIndex,
+            referenceIndex: state.tseIndex,
             priceRange: state.priceRange,
             etfLots: state.etfLots,
             etfCost: state.etfCost,
@@ -1274,7 +1276,8 @@ function updateChart() {
     let resultC = null;
     if (state.strategies.C && state.strategies.C.length > 0) {
         resultC = Calculator.calculatePnLCurve({
-            centerPrice: state.tseIndex,
+            centerPrice: state.referenceIndex,
+            referenceIndex: state.tseIndex,
             priceRange: state.priceRange,
             etfLots: state.etfLots,
             etfCost: state.etfCost,
