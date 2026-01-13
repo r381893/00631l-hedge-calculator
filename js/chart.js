@@ -177,24 +177,25 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
     // 建立資料集
     const datasets = [];
 
-    // 只有在沒有比較資料時才顯示 ETF 和選擇權個別曲線，以免圖表太亂
-    if (!dataB && !dataC) {
-        if (showETF && etfProfits.some(v => v !== 0)) {
-            datasets.push({
-                label: '00631L',
-                data: toScatterData(etfProfits),
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                pointRadius: 0,
-                pointHoverRadius: 5,
-                tension: 0.1,
-                fill: false,
-                showLine: true
-            });
-        }
+    // 顯示 ETF 曲線 (始終顯示，作為對照)
+    if (showETF && etfProfits.some(v => v !== 0)) {
+        datasets.push({
+            label: '00631L',
+            data: toScatterData(etfProfits),
+            borderColor: '#94a3b8', // 灰色
+            backgroundColor: 'rgba(148, 163, 184, 0.1)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            tension: 0.1,
+            fill: false,
+            showLine: true
+        });
+    }
 
+    // 只有在沒有比較資料時才顯示選擇權個別曲線 (避免太亂)
+    if (!dataB && !dataC) {
         if (showOptions && optionProfits.some(v => v !== 0)) {
             datasets.push({
                 label: '選擇權',

@@ -1311,6 +1311,7 @@ function updateChart() {
                 <span class="legend-item" style="color:#ef4444">🔴 策略 A</span> |
                 ${resultB ? '<span class="legend-item" style="color:#3b82f6">🔵 策略 B</span> |' : ''}
                 ${resultC ? '<span class="legend-item" style="color:#69f0ae">🟢 策略 C</span> |' : ''}
+                <span class="legend-item" style="color:#94a3b8">📉 00631L</span> |
                 <span class="legend-item legend-current">Current</span> = 現價
             `;
         } else {
