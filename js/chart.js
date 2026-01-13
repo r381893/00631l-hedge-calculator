@@ -48,11 +48,11 @@ const chartDefaults = {
             },
             callbacks: {
                 title: function (context) {
-                    const y = context[0].parsed.y;
-                    return `結算指數: ${y.toLocaleString()}`;
+                    const x = context[0].parsed.x;
+                    return `結算指數: ${x.toLocaleString()}`;
                 },
                 label: function (context) {
-                    const value = context.parsed.x;
+                    const value = context.parsed.y;
                     const formatted = value >= 0
                         ? `+${value.toLocaleString()}`
                         : value.toLocaleString();
@@ -79,7 +79,7 @@ const chartDefaults = {
             },
             title: {
                 display: true,
-                text: '損益 (元)',
+                text: '結算指數',
                 color: '#94a3b8',
                 font: {
                     family: "'Noto Sans TC', sans-serif",
@@ -108,7 +108,7 @@ const chartDefaults = {
             },
             title: {
                 display: true,
-                text: '結算指數',
+                text: '損益 (元)',
                 color: '#94a3b8',
                 font: {
                     family: "'Noto Sans TC', sans-serif",
@@ -169,9 +169,9 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
 
     const { prices, etfProfits, optionProfits, combinedProfits } = data;
 
-    // 轉換為 scatter 格式：{x: 損益, y: 指數}
+    // 轉換為 scatter 格式：{x: 指數, y: 損益}
     const toScatterData = (profits) => {
-        return prices.map((price, i) => ({ x: profits[i], y: price }));
+        return prices.map((price, i) => ({ x: price, y: profits[i] }));
     };
 
     // 建立資料集
@@ -270,15 +270,15 @@ function updatePnLChart(data, currentIndex, showETF = true, showOptions = true, 
         annotations: {
             zeroLine: {
                 type: 'line',
-                xMin: 0,
-                xMax: 0,
+                yMin: 0,
+                yMax: 0,
                 borderColor: 'rgba(148, 163, 184, 0.5)',
                 borderWidth: 1
             },
             currentLine: {
                 type: 'line',
-                yMin: currentIndex,
-                yMax: currentIndex,
+                xMin: currentIndex,
+                xMax: currentIndex,
                 borderColor: 'rgba(239, 68, 68, 0.7)',
                 borderWidth: 2,
                 borderDash: [5, 5],
