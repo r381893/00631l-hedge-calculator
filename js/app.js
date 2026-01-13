@@ -145,6 +145,7 @@ function cacheElements() {
 
     // Strategy Controls
     elements.btnConfirmCopy = document.getElementById('btn-confirm-copy');
+    elements.chkConfirmCopy = document.getElementById('chk-confirm-copy'); // Added
     elements.copySource = document.getElementById('copy-source');
     elements.copyTarget = document.getElementById('copy-target');
 
@@ -233,6 +234,11 @@ function bindEvents() {
     elements.btnGroupPositions?.addEventListener('click', handleGroupPositions);
     // elements.btnOpenCopyModal... (已移除)
     elements.btnConfirmCopy?.addEventListener('click', handleConfirmCopy);
+    elements.chkConfirmCopy?.addEventListener('change', (e) => {
+        if (elements.btnConfirmCopy) {
+            elements.btnConfirmCopy.disabled = !e.target.checked;
+        }
+    });
     elements.copySource?.addEventListener('change', handleCopySourceChange);
     elements.btnClearStrategy?.addEventListener('click', handleClearStrategy);
     elements.btnAddToA?.addEventListener('click', () => handleAddToStrategyClick('A'));
