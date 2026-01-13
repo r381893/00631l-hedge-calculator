@@ -771,6 +771,18 @@ async function renderStrikePicker() {
         const data = await response.json();
         state.optionChainData = data; // 快取資料
 
+        // FIX: 如果 API 回傳了有效且新的中心價格 (例如來自 Yahoo 期貨的夜盤價格)，更新全域指數狀態
+        if (data.center_price && data.center_price > 0 && data.source !== 'mock') {
+            state.tseIndex = data.center_price;
+            if (elements.tseIndex) {
+                elements.tseIndex.textContent = state.tseIndex.toLocaleString();
+            }
+            // 由於指數更新，可能需要觸發某些依賴指數的計算 (例如 PnL)
+            // 但為了避免無限迴圈或過度渲染，這裡暫時只更新顯示與狀態
+            // 如果需要，可以呼叫 updateUI() 或 updateChart()
+            updateChart();
+        }
+
         renderOptionChainGrid(data);
 
     } catch (error) {
