@@ -322,7 +322,8 @@ function bindSourceSwitcherEvents() {
                 const sourceLabel = {
                     'taifex': '期交所',
                     'mock': '模擬',
-                    'fubon': '富邦'
+                    'fubon': '富邦',
+                    'yahoo': 'Yahoo'
                 };
                 sourceStatus.textContent = sourceLabel[state.optionChainData.source] || state.optionChainData.source;
                 sourceStatus.className = state.optionChainData.source === 'mock' ? 'source-status warning' : 'source-status success';
@@ -341,6 +342,7 @@ async function initSourceAvailability() {
     const sourceStatus = document.getElementById('source-status');
     const fubonBtn = document.querySelector('.source-btn[data-source="fubon"]');
     const taifexBtn = document.querySelector('.source-btn[data-source="taifex"]');
+    const yahooBtn = document.querySelector('.source-btn[data-source="yahoo"]');
 
     try {
         const response = await fetch('http://localhost:5000/api/sources');
@@ -350,6 +352,11 @@ async function initSourceAvailability() {
             // 啟用富邦按鈕（如果可用）
             if (fubonBtn && data.fubon_available) {
                 fubonBtn.disabled = false;
+            }
+
+            // 啟用 Yahoo 按鈕（如果可用）
+            if (yahooBtn && data.yahoo_available) {
+                yahooBtn.disabled = false;
             }
 
             // 如果期交所不可用，自動切換到 mock

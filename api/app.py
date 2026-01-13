@@ -24,6 +24,7 @@ import csv
 from datetime import datetime
 from dotenv import load_dotenv
 import logging
+import yahoo_scraper  # Import the new scraper logic
 
 load_dotenv()
 
@@ -657,11 +658,74 @@ class FubonDataProvider(DataProvider):
             return None
 
 
+# ============ Yahoo 奇摩資料提供者 ============
+
+class YahooDataProvider(DataProvider):
+    """Yahoo 奇摩股市資料 scraper"""
+    
+    def __init__(self):
+        self.cache = {
+            'data': None,
+            'index_price': None,
+            'timestamp': None,
+            'ttl': 60  # 快取 1 分鐘 (Scraper 不宜太頻繁)
+        }
+        
+    def _fetch_data(self):
+        # 檢查快取
+        if self.cache['data'] and self.cache['timestamp']:
+            elapsed = (datetime.now() - self.cache['timestamp']).total_seconds()
+            if elapsed < self.cache['ttl']:
+                return self.cache['data'], self.cache['index_price']
+                
+        logger.info("📡 正在從 Yahoo 奇摩抓取選擇權資料...")
+        try:
+            index_price, data = yahoo_scraper.scrape_yahoo_option_chain()
+            if data:
+                self.cache['data'] = data
+                self.cache['index_price'] = index_price
+                self.cache['timestamp'] = datetime.now()
+                logger.info(f"✅ Yahoo 抓取成功，共 {len(data)} 筆，指數: {index_price}")
+                return data, index_price
+            else:
+                logger.warning("⚠️ Yahoo 抓取回傳空資料")
+                return None, None
+        except Exception as e:
+            logger.error(f"❌ Yahoo 抓取失敗: {e}")
+            return None, None
+
+    def get_tx_price(self) -> dict:
+        _, index_price = self._fetch_data()
+        price = index_price if index_price else 0
+        return {
+            "price": price,
+            "change": 0,
+            "change_percent": 0
+        }
+
+    def get_option_price(self, strike: int, option_type: str) -> dict:
+        data, _ = self._fetch_data()
+        if not data:
+            return None
+            
+        call_put = 'C' if option_type.lower() == 'call' else 'P'
+        key = f"{strike}_{call_put}"
+        
+        if key in data:
+            return data[key]
+        return None
+        
+    def is_available(self) -> bool:
+        data, _ = self._fetch_data()
+        return data is not None and len(data) > 0
+
+
 # ============ 全域資料提供者管理 ============
 
 # 初始化各資料提供者
 mock_provider = MockDataProvider()
 taifex_provider = TaifexDataProvider()
+yahoo_provider = YahooDataProvider() # Initialize Yahoo Provider
 fubon_provider = None
 
 def init_fubon_provider():
@@ -728,6 +792,8 @@ def get_provider(source: str, center: int = None) -> DataProvider:
         return fubon_provider
     elif source == 'taifex' and taifex_provider.is_available():
         return taifex_provider
+    elif source == 'yahoo' and yahoo_provider.is_available(): # Add Yahoo source check
+        return yahoo_provider
     else:
         return mock_provider
 
@@ -741,6 +807,7 @@ def health():
         "status": "ok",
         "fubon_connected": fubon_provider is not None and fubon_provider.is_logged_in,
         "taifex_available": taifex_provider.is_available(),
+        "yahoo_available": yahoo_provider.is_available(), # Expose Yahoo status
         "timestamp": datetime.now().isoformat()
     })
 
@@ -839,11 +906,16 @@ def get_available_sources():
     if fubon_provider and fubon_provider.is_logged_in:
         sources.append('fubon')
     
+    # 檢查 Yahoo
+    if yahoo_provider.is_available():
+        sources.append('yahoo')
+    
     return jsonify({
         "sources": sources,
         "default": sources[0] if sources else 'mock',
         "fubon_available": fubon_provider is not None and fubon_provider.is_logged_in,
-        "taifex_available": taifex_provider.is_available()
+        "taifex_available": taifex_provider.is_available(),
+        "yahoo_available": yahoo_provider.is_available()
     })
 
 
