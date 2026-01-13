@@ -1373,7 +1373,7 @@ function handleProductTabClick(e) {
     elements.productTabs.forEach(tab => tab.classList.remove('active'));
     e.target.classList.add('active');
 
-    if (product === 'option') {
+    if (product.toLowerCase() === 'option') {
         elements.optionForm.style.display = 'block';
         elements.futuresForm.style.display = 'none';
     } else {
