@@ -2135,7 +2135,7 @@ summary.section-title-summary h2 {
 /* ======== A/B Strategy Comparison Grid/* 策略比較區域 - 三欄版 */
 .comparison-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
     gap: 15px;
     margin-bottom: 20px;
 }
