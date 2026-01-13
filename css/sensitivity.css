@@ -1,0 +1,97 @@
+/* ======== Sensitivity Analysis Grid ======== */
+.sensitivity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.sensitivity-item {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all var(--transition-fast);
+}
+
+.sensitivity-item:hover {
+    box-shadow: var(--shadow-sm);
+    border-color: rgba(148, 163, 184, 0.4);
+}
+
+.sensitivity-item.down {
+    border-top: 3px solid var(--success); /* Green for Down/Put logic or standard Red/Green? TW stock: Green is Down? No, TW: Green is Down, Red is Up. */
+    /* Wait, usually "Down" implies risk/bad, but for hedging "Put" gains. */
+    /* Let's stick to standard TW colors: Down = Green, Up = Red */
+    border-top-color: var(--success);
+}
+
+.sensitivity-item.up {
+    border-top-color: var(--danger);
+}
+
+.sensitivity-item.current {
+    border-top-color: var(--accent);
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), transparent);
+}
+
+.sen-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sen-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.sensitivity-item.down .sen-label { color: var(--success-light); }
+.sensitivity-item.up .sen-label { color: var(--danger-light); }
+.sensitivity-item.current .sen-label { color: var(--accent-light); }
+
+.sen-index {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.sen-body {
+    padding: 12px 14px;
+}
+
+.sen-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.sen-row:last-child {
+    margin-bottom: 0;
+}
+
+.sen-row span:first-child {
+    color: var(--text-muted);
+}
+
+.sen-value {
+    font-weight: 700;
+}
+
+.sen-value.profit { color: var(--danger-light); } /* TW: Profit is Red */
+.sen-value.loss { color: var(--success-light); }   /* TW: Loss is Green */
+/* Wait, standard accounting is Red=Negative? No, in TW stock RED is UP/Profit, GREEN is DOWN/Loss. */
+/* But 'profit' class usually maps to Red in this app CSS? Let's check style.css */
+/* .profit { color: var(--success); } -> Line 21. Usually Green is success. */
+/* But in TW stocks, Red is Up. */
+/* Let's check existing .profit class in style.css */
+
+/* In style.css (Line 21): --success: #22c55e (Green). */
+/* In style.css (Line 701): .col-total-a { color: var(--danger-light); } -> Red */
+/* This app seems to mix conventions or uses Green for Profit (US Style)? */
+/* Let's verify style.css again. */

@@ -159,6 +159,19 @@ function cacheElements() {
 
     // AI Inventory Parser
     elements.inventoryText = document.getElementById('inventory-text');
+
+    // Sensitivity Analysis Elements
+    state.senElements = {
+        indexDown: document.getElementById('sen-index-down'),
+        indexCurrent: document.getElementById('sen-index-current'),
+        indexUp: document.getElementById('sen-index-up'),
+        etfDown: document.getElementById('sen-etf-down'),
+        etfCurrent: document.getElementById('sen-etf-current'),
+        etfUp: document.getElementById('sen-etf-up'),
+        stratDown: document.getElementById('sen-strategy-down'),
+        stratCurrent: document.getElementById('sen-strategy-current'),
+        stratUp: document.getElementById('sen-strategy-up')
+    };
     elements.btnParseInventory = document.getElementById('btn-parse-inventory');
     elements.btnClearInventory = document.getElementById('btn-clear-inventory');
     elements.parseResults = document.getElementById('parse-results');
@@ -586,6 +599,7 @@ function updateUI() {
     renderPositionsList('C');
     updatePremiumSummary('C');
     updatePnLTable();
+    updateSensitivityAnalysis(); // Added
 
     // 更新履約價選擇器 (僅當中心點改變時才會重繪)
     renderStrikePicker();
@@ -1334,6 +1348,84 @@ function updateChart() {
     }
 
     updatePnLTable();
+}
+
+/**
+ * 更新損益敏感度分析
+ */
+function updateSensitivityAnalysis() {
+    const { tseIndex, etfLots, etfCost, etfCurrentPrice, strategies, referenceIndex } = state;
+    const { senElements } = state;
+    if (!senElements.indexCurrent) return; // Safety check
+
+    const range = 100;
+    const indexDown = tseIndex - range;
+    const indexUp = tseIndex + range;
+
+    // Helper to format PnL
+    const fmt = (val, isDiff = false) => {
+        const sign = val > 0 ? '+' : (val < 0 ? '' : ''); // Negative numbers have '-' automatically
+        const cls = val > 0 ? 'profit' : (val < 0 ? 'loss' : '');
+        // For diffs, usually explicit + is good. For absolute, maybe distinct.
+        // Let's use standard signed format.
+        const prefix = (isDiff && val > 0) ? '+' : '';
+        return `<span class="${cls}">${prefix}${val.toLocaleString()}</span>`;
+    };
+
+    // Calculate ETF PnL
+    // Note: We use referenceIndex regarding the "Base Point" logic if we want "Accumulated PnL".
+    // But "Sensitivity" usually asks "What if price moves NOW?".
+    // However, our calculator uses `baseIndex` (Reference Index) to determine entry point.
+    // So `calcETFPnL(targetPrice, baseIndex, ...)` gives the absolute PnL at that price relative to entry.
+    // The "Change" is `PnL_at_Target - PnL_at_Current`.
+
+    // 1. Absolute PnL at each point (Relative to Entry/Reference)
+    const getEtfPnL = (idx) => Calculator.calcETFPnL(idx, referenceIndex, etfLots, etfCost, etfCurrentPrice);
+
+    const etfPnL_Current = getEtfPnL(tseIndex);
+    const etfPnL_Down = getEtfPnL(indexDown);
+    const etfPnL_Up = getEtfPnL(indexUp);
+
+    // 2. Strategy PnL at each point
+    // We need to sum up all active strategies (A+B+C) or just the active ones?
+    // Usually "Strategy PnL" means the Option Overlay.
+    // Let's sum all active strategies to show total portfolio sensitivity.
+    const allPositions = [
+        ...(strategies.A || []),
+        ...(strategies.B || []),
+        ...(strategies.C || [])
+    ];
+
+    const getStratPnL = (idx) => {
+        let total = 0;
+        allPositions.forEach(pos => {
+            total += Calculator.calcPositionPnL(pos, idx);
+        });
+        return total;
+    };
+
+    const stratPnL_Current = getStratPnL(tseIndex);
+    const stratPnL_Down = getStratPnL(indexDown);
+    const stratPnL_Up = getStratPnL(indexUp);
+
+    // 3. Render Indices
+    senElements.indexDown.textContent = indexDown.toLocaleString();
+    senElements.indexCurrent.textContent = tseIndex.toLocaleString();
+    senElements.indexUp.textContent = indexUp.toLocaleString();
+
+    // 4. Render Values
+    // Current: Show Absolute PnL (Accumulated)
+    // Up/Down: Show CHANGE (Delta) relative to Current
+
+    // ETF
+    senElements.etfCurrent.innerHTML = fmt(Math.round(etfPnL_Current));
+    senElements.etfDown.innerHTML = fmt(Math.round(etfPnL_Down - etfPnL_Current), true);
+    senElements.etfUp.innerHTML = fmt(Math.round(etfPnL_Up - etfPnL_Current), true);
+
+    // Strategy
+    senElements.stratCurrent.innerHTML = fmt(Math.round(stratPnL_Current));
+    senElements.stratDown.innerHTML = fmt(Math.round(stratPnL_Down - stratPnL_Current), true);
+    senElements.stratUp.innerHTML = fmt(Math.round(stratPnL_Up - stratPnL_Current), true);
 }
 
 /**
