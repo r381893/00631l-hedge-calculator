@@ -1306,6 +1306,26 @@ function updateChart() {
         });
     }
 
+    // Normalize ETF PnL (Subtract Current PnL to show Change)
+    // 這會讓 ETF 曲線在當前指數位置歸零，方便與策略損益比較
+    const currentEtfPnL = Calculator.calcETFPnL(
+        state.tseIndex,
+        state.referenceIndex,
+        state.etfLots,
+        state.etfCost,
+        state.etfCurrentPrice
+    );
+
+    if (resultA && resultA.etfProfits) {
+        resultA.etfProfits = resultA.etfProfits.map(p => p - currentEtfPnL);
+    }
+    if (resultB && resultB.etfProfits) {
+        resultB.etfProfits = resultB.etfProfits.map(p => p - currentEtfPnL);
+    }
+    if (resultC && resultC.etfProfits) {
+        resultC.etfProfits = resultC.etfProfits.map(p => p - currentEtfPnL);
+    }
+
     ChartModule.updatePnLChart(
         resultA,
         state.tseIndex,
