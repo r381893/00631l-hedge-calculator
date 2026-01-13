@@ -141,15 +141,11 @@ def get_yahoo_index_price(html_content):
         pass
 
     # Regex Fallback for Index Price
-    # 尋找 "台指期近一" ... 31,000.00
-    # 模式 A: "台指期近一".*?(\d{1,3}(,\d{3})*(\.\d+)?)
-    # 模式 B: 台指期近一 link -> price 
-    # 基於提供的截圖，價格在 "台指期近一" (WTX&) 該行數據中，通常是第一個出現的數字
+    # 尋找 "台指期近一" 相關代號 (WTX&) ... 31,000.00
+    # HTML Snippet: ... WTX&amp; ... 31,010.00 ...
+    # 由於 "台指期近一" 可能會有編碼問題 (Big5 vs UTF-8)，改抓其代號 "WTX&" 或 "WTX&amp;"
     
-    # 嘗試抓取 class="Jc(fe)" 或類似的價格元素 (Yahoo 改版常變)
-    # 比較穩健的方式是抓取 "台指期近一" 之後出現的第一個價格格式字串
-    
-    match = re.search(r'台指期近一.*?([\d,]+\.\d{2})', html_content, re.DOTALL)
+    match = re.search(r'WTX(?:&|&amp;).*?([\d,]+\.\d{2})', html_content, re.DOTALL)
     if match:
         try:
             # 優先使用台指期近一 (Futures) 作為 Index Price，以支援夜盤
