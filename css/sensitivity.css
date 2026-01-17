@@ -1,97 +1,374 @@
-/* ======== Sensitivity Analysis Grid ======== */
-.sensitivity-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
+/* ======== Risk Dashboard Styles ======== */
+
+/* Main Dashboard Grid */
+.risk-dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-.sensitivity-item {
+.risk-section {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.risk-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Risk Metrics Grid */
+.risk-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.risk-metric-card {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    overflow: hidden;
+    padding: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     transition: all var(--transition-fast);
 }
 
-.sensitivity-item:hover {
+.risk-metric-card:hover {
+    border-color: var(--accent);
     box-shadow: var(--shadow-sm);
-    border-color: rgba(148, 163, 184, 0.4);
+    transform: translateY(-1px);
 }
 
-.sensitivity-item.down {
-    border-top: 3px solid var(--success); /* Green for Down/Put logic or standard Red/Green? TW stock: Green is Down? No, TW: Green is Down, Red is Up. */
-    /* Wait, usually "Down" implies risk/bad, but for hedging "Put" gains. */
-    /* Let's stick to standard TW colors: Down = Green, Up = Red */
-    border-top-color: var(--success);
+.risk-metric-card.danger {
+    border-left: 3px solid var(--danger);
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.05), transparent);
 }
 
-.sensitivity-item.up {
-    border-top-color: var(--danger);
-}
-
-.sensitivity-item.current {
-    border-top-color: var(--accent);
-    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), transparent);
-}
-
-.sen-header {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border-color);
+.metric-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.02);
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
 }
 
-.sen-label {
-    font-size: 0.9rem;
+.metric-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.metric-value {
+    font-size: 1.2rem;
     font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+    word-break: break-word;
 }
 
-.sensitivity-item.down .sen-label { color: var(--success-light); }
-.sensitivity-item.up .sen-label { color: var(--danger-light); }
-.sensitivity-item.current .sen-label { color: var(--accent-light); }
+.metric-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
 
-.sen-index {
-    font-family: 'Courier New', monospace;
+/* Greeks Grid */
+.greeks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.greek-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.greek-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+}
+
+.greek-card.delta::before {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.greek-card.theta::before {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.greek-card.premium::before {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.greek-card.pnl::before {
+    background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+}
+
+.greek-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+.greek-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.greek-symbol {
+    font-size: 1.3rem;
+    font-weight: 700;
+    opacity: 0.9;
+}
+
+.greek-card.delta .greek-symbol {
+    color: #60a5fa;
+}
+
+.greek-card.theta .greek-symbol {
+    color: #fbbf24;
+}
+
+.greek-card.premium .greek-symbol {
+    color: #34d399;
+}
+
+.greek-card.pnl .greek-symbol {
+    font-size: 1.1rem;
+}
+
+.greek-name {
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-secondary);
 }
 
-.sen-body {
-    padding: 12px 14px;
+.greek-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+    margin-bottom: 4px;
 }
 
-.sen-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
+.greek-value.positive {
+    color: var(--danger-light);
 }
 
-.sen-row:last-child {
-    margin-bottom: 0;
+/* TW: Red = Positive */
+.greek-value.negative {
+    color: var(--success-light);
 }
 
-.sen-row span:first-child {
+/* TW: Green = Negative */
+
+.greek-desc {
+    font-size: 0.7rem;
     color: var(--text-muted);
 }
 
-.sen-value {
-    font-weight: 700;
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .risk-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .greeks-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .metric-value {
+        font-size: 1rem;
+    }
+
+    .greek-value {
+        font-size: 1.2rem;
+    }
 }
 
-.sen-value.profit { color: var(--danger-light); } /* TW: Profit is Red */
-.sen-value.loss { color: var(--success-light); }   /* TW: Loss is Green */
-/* Wait, standard accounting is Red=Negative? No, in TW stock RED is UP/Profit, GREEN is DOWN/Loss. */
-/* But 'profit' class usually maps to Red in this app CSS? Let's check style.css */
-/* .profit { color: var(--success); } -> Line 21. Usually Green is success. */
-/* But in TW stocks, Red is Up. */
-/* Let's check existing .profit class in style.css */
+@media (max-width: 480px) {
+    .greeks-grid {
+        grid-template-columns: 1fr;
+    }
 
-/* In style.css (Line 21): --success: #22c55e (Green). */
-/* In style.css (Line 701): .col-total-a { color: var(--danger-light); } -> Red */
-/* This app seems to mix conventions or uses Green for Profit (US Style)? */
-/* Let's verify style.css again. */
+    .risk-metric-card {
+        padding: 12px;
+    }
+
+    .greek-card {
+        padding: 12px;
+    }
+}
+
+/* Value color classes */
+.value-profit {
+    color: var(--danger-light) !important;
+}
+
+/* TW: Red = Profit/Positive */
+.value-loss {
+    color: var(--success-light) !important;
+}
+
+/* TW: Green = Loss/Negative */
+.value-neutral {
+    color: var(--text-secondary) !important;
+}
+
+/* Risk Strategy Selector */
+.risk-strategy-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.risk-strat-btn {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.risk-strat-btn:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.risk-strat-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+}
+
+.risk-strat-btn[data-risk-strategy="A"].active {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-color: #ef4444;
+}
+
+.risk-strat-btn[data-risk-strategy="B"].active {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-color: #3b82f6;
+}
+
+.risk-strat-btn[data-risk-strategy="C"].active {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-color: #22c55e;
+}
+
+/* ========================================
+   AI Assistant Styles
+   ======================================== */
+
+.btn-ai-action {
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.btn-ai-action:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: translateY(-2px);
+}
+
+.btn-ai-action:active {
+    transform: translateY(0);
+}
+
+/* AI Response Content */
+#ai-response-content {
+    line-height: 1.7;
+    font-size: 0.9rem;
+}
+
+#ai-response-content h1,
+#ai-response-content h2,
+#ai-response-content h3 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    color: var(--accent);
+}
+
+#ai-response-content ul,
+#ai-response-content ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+#ai-response-content li {
+    margin: 0.3em 0;
+}
+
+#ai-response-content code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+}
+
+#ai-response-content strong {
+    color: var(--accent-light);
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

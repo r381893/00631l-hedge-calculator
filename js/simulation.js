@@ -55,7 +55,7 @@ const SimulationModule = (function () {
 
     function init() {
         bindEvents();
-        updateDisplay();
+        // updateDisplay(); // Removed undefined function call
     }
 
     function bindEvents() {

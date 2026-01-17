@@ -164,8 +164,12 @@
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">🤖 AI 設定</h3>
                     <div class="form-group">
-                        <label for="ai-api-key">Google Gemini API Key</label>
-                        <input type="password" id="ai-api-key" placeholder="貼上您的 API Key">
+                        <label for="ai-api-key">
+                            Google Gemini API Key
+                            <span id="ai-key-status"
+                                style="font-size: 0.75rem; margin-left: 8px; color: var(--success);">✓ 已記住</span>
+                        </label>
+                        <input type="password" id="ai-api-key" placeholder="貼一次就會記住，不用重複貼">
                     </div>
                     <!-- 
                     <div class="form-group">
@@ -532,63 +536,169 @@
                 </div>
             </section>
 
-            <!-- Sensitivity Analysis Card -->
-            <section class="card" id="sensitivity-card">
-                <h2 class="section-title">📊 損益敏感度分析 (±100點)</h2>
-                <div class="sensitivity-grid">
-                    <!-- Down 100 -->
-                    <div class="sensitivity-item down">
-                        <div class="sen-header">
-                            <span class="sen-label">📉 下跌 100 點</span>
-                            <span class="sen-index" id="sen-index-down">--</span>
+            <!-- Risk Dashboard Card -->
+            <section class="card" id="risk-dashboard-card">
+                <div class="section-header"
+                    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="section-title" style="margin: 0;">🎯 風險儀表板</h2>
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <!-- Days to Expiry Input -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="risk-days-to-expiry"
+                                style="font-size: 0.8rem; color: var(--text-muted);">剩餘天數:</label>
+                            <input type="number" id="risk-days-to-expiry" value="15" min="1" max="60"
+                                style="width: 50px; padding: 4px 6px; font-size: 0.85rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);"
+                                title="用於計算 Theta (每日時間價值損耗)">
                         </div>
-                        <div class="sen-body">
-                            <div class="sen-row">
-                                <span>ETF 損益變化</span>
-                                <span class="sen-value" id="sen-etf-down">--</span>
+                        <!-- Strategy Selector -->
+                        <div class="risk-strategy-selector">
+                            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">分析策略:</span>
+                            <button class="btn btn-sm risk-strat-btn" data-risk-strategy="A">🔴 A</button>
+                            <button class="btn btn-sm risk-strat-btn" data-risk-strategy="B">🔵 B</button>
+                            <button class="btn btn-sm risk-strat-btn" data-risk-strategy="C">🟢 C</button>
+                            <button class="btn btn-sm risk-strat-btn active" data-risk-strategy="ALL">全部</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="risk-dashboard-grid">
+                    <!-- Key Risk Metrics -->
+                    <div class="risk-section">
+                        <h3 class="risk-section-title">📊 關鍵風險指標</h3>
+                        <div class="risk-metrics-grid">
+                            <!-- Breakeven Points -->
+                            <div class="risk-metric-card" title="在模擬範圍內，總損益由負轉正（或正轉負）的指數點位">
+                                <div class="metric-icon">📍</div>
+                                <div class="metric-content">
+                                    <span class="metric-label">損益兩平點</span>
+                                    <span class="metric-value" id="risk-breakeven">--</span>
+                                    <span class="metric-sub">指數到達此點位時損益為零</span>
+                                </div>
                             </div>
-                            <div class="sen-row strategy-row">
-                                <span>策略損益變化</span>
-                                <span class="sen-value" id="sen-strategy-down">--</span>
+                            <!-- Range Min PnL -->
+                            <div class="risk-metric-card danger" title="在模擬範圍內，總損益最差的情況。正數表示最少賺多少，負數表示最多虧多少。">
+                                <div class="metric-icon">⚠️</div>
+                                <div class="metric-content">
+                                    <span class="metric-label">範圍內最差情況</span>
+                                    <span class="metric-value" id="risk-max-loss">--</span>
+                                    <span class="metric-sub" id="risk-max-loss-index">發生在此指數位置</span>
+                                </div>
+                            </div>
+                            <!-- Hedge Coverage -->
+                            <div class="risk-metric-card" title="策略的反向Delta能覆蓋多少ETF的Delta曝險。100%表示完全避險。">
+                                <div class="metric-icon">🛡️</div>
+                                <div class="metric-content">
+                                    <span class="metric-label">避險覆蓋率</span>
+                                    <span class="metric-value" id="risk-hedge-coverage">--</span>
+                                    <span class="metric-sub" id="risk-hedge-desc">|策略Δ| ÷ |ETF Δ| × 100%</span>
+                                </div>
+                            </div>
+                            <!-- Downside Protection -->
+                            <div class="risk-metric-card" title="如果指數下跌500或1000點，你的總損益會是多少。正數=還在賺，負數=開始虧。">
+                                <div class="metric-icon">📉</div>
+                                <div class="metric-content">
+                                    <span class="metric-label">跌500點時損益</span>
+                                    <span class="metric-value" id="risk-downside-500">--</span>
+                                    <span class="metric-sub" id="risk-downside-1000">跌1000點: --</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Current -->
-                    <div class="sensitivity-item current">
-                        <div class="sen-header">
-                            <span class="sen-label">🎯 當前指數</span>
-                            <span class="sen-index" id="sen-index-current">--</span>
+                    <!-- Greeks Summary -->
+                    <div class="risk-section">
+                        <h3 class="risk-section-title">🔢 Greeks 風險曝險</h3>
+                        <div class="greeks-grid">
+                            <!-- Portfolio Delta -->
+                            <div class="greek-card delta" title="指數每變動100點，你的總損益會變動多少元。正數表示看多（指數漲你賺），負數表示看空。">
+                                <div class="greek-header">
+                                    <span class="greek-symbol">Δ</span>
+                                    <span class="greek-name">Delta</span>
+                                </div>
+                                <div class="greek-value" id="greek-delta">--</div>
+                                <div class="greek-desc">每100點漲跌的損益變化</div>
+                            </div>
+                            <!-- Portfolio Theta -->
+                            <div class="greek-card theta" title="時間每過一天，權利金會衰減多少元。賣方(+正值)每天收時間價值，買方(-負值)每天損失時間價值。">
+                                <div class="greek-header">
+                                    <span class="greek-symbol">Θ</span>
+                                    <span class="greek-name">Theta</span>
+                                </div>
+                                <div class="greek-value" id="greek-theta">--</div>
+                                <div class="greek-desc">每日損益 (元)</div>
+                            </div>
+                            <!-- Net Premium -->
+                            <div class="greek-card premium" title="賣出選擇權收到的權利金 減去 買入選擇權支付的權利金。正數表示淨收入，負數表示淨支出。">
+                                <div class="greek-header">
+                                    <span class="greek-symbol">$</span>
+                                    <span class="greek-name">淨權利金</span>
+                                </div>
+                                <div class="greek-value" id="greek-net-premium">--</div>
+                                <div class="greek-desc">收入 - 支出 = 淨收支</div>
+                            </div>
+                            <!-- Current PnL -->
+                            <div class="greek-card pnl" title="以當前指數計算的總損益 = ETF未實現損益 + 選擇權結算價值 - 權利金成本">
+                                <div class="greek-header">
+                                    <span class="greek-symbol">💰</span>
+                                    <span class="greek-name">當前總損益</span>
+                                </div>
+                                <div class="greek-value" id="greek-current-pnl">--</div>
+                                <div class="greek-desc">ETF損益 + 策略損益</div>
+                            </div>
                         </div>
-                        <div class="sen-body">
-                            <div class="sen-row">
-                                <span>ETF 當前損益</span>
-                                <span class="sen-value" id="sen-etf-current">--</span>
-                            </div>
-                            <div class="sen-row strategy-row">
-                                <span>策略當前損益</span>
-                                <span class="sen-value" id="sen-strategy-current">--</span>
-                            </div>
+                        <!-- Explanation Note -->
+                        <div class="risk-note"
+                            style="margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.75rem; color: var(--text-muted);">
+                            💡 <strong>單位說明：</strong>所有數值皆為<strong>元(NTD)</strong>｜
+                            Delta +正=看多曝險、-負=看空曝險｜
+                            Theta +正=賣方每日收益、-負=買方每日損耗｜
+                            滑鼠移到卡片上可看詳細計算說明
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <!-- Up 100 -->
-                    <div class="sensitivity-item up">
-                        <div class="sen-header">
-                            <span class="sen-label">📈 上漲 100 點</span>
-                            <span class="sen-index" id="sen-index-up">--</span>
-                        </div>
-                        <div class="sen-body">
-                            <div class="sen-row">
-                                <span>ETF 損益變化</span>
-                                <span class="sen-value" id="sen-etf-up">--</span>
-                            </div>
-                            <div class="sen-row strategy-row">
-                                <span>策略損益變化</span>
-                                <span class="sen-value" id="sen-strategy-up">--</span>
-                            </div>
-                        </div>
+            <!-- AI Assistant Section -->
+            <section class="card" id="ai-assistant-card">
+                <h2 class="section-title">🤖 AI 助手</h2>
+
+                <!-- Quick Actions -->
+                <div class="ai-quick-actions"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 15px;">
+                    <button class="btn btn-ai-action" data-ai-action="risk-check" title="根據目前持倉評估風險">
+                        ⚠️ 風險預警
+                    </button>
+                    <button class="btn btn-ai-action" data-ai-action="strategy-suggest" title="推薦避險策略">
+                        🎯 策略推薦
+                    </button>
+                    <button class="btn btn-ai-action" data-ai-action="explain-position" title="解釋目前倉位">
+                        📊 倉位分析
+                    </button>
+                    <button class="btn btn-ai-action" data-ai-action="what-if" title="情境模擬">
+                        🔮 假如分析
+                    </button>
+                </div>
+
+                <!-- Custom Question -->
+                <div class="ai-question-input" style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    <input type="text" id="ai-question" placeholder="問任何選擇權相關問題，例如：什麼是 Iron Condor？"
+                        style="flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.9rem;">
+                    <button id="btn-ai-ask" class="btn btn-primary" style="padding: 10px 16px;">
+                        發送 💬
+                    </button>
+                </div>
+
+                <!-- AI Response Area -->
+                <div id="ai-response-area" style="display: none;">
+                    <div id="ai-loading-indicator"
+                        style="display: none; text-align: center; padding: 20px; color: var(--text-muted);">
+                        <span class="loading-spinner"></span> AI 思考中...
                     </div>
+                    <div id="ai-response-content"
+                        style="background: rgba(255,255,255,0.02); border-radius: 10px; padding: 15px; border: 1px solid var(--border-color); max-height: 400px; overflow-y: auto;">
+                    </div>
+                    <button id="btn-close-ai-response" class="btn btn-sm" style="margin-top: 10px; opacity: 0.7;">
+                        ✕ 關閉
+                    </button>
                 </div>
             </section>
 

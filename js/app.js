@@ -43,6 +43,9 @@ const state = {
     nextGroupId: 1,
     selectedPositions: new Set(), // 儲存格式: "Strategy-Index" (e.g., "A-0")
 
+    // 風險儀表板分析策略
+    riskAnalysisStrategy: 'ALL', // 'A', 'B', 'C', or 'ALL'
+
     isLoading: true
 };
 
@@ -160,17 +163,21 @@ function cacheElements() {
     // AI Inventory Parser
     elements.inventoryText = document.getElementById('inventory-text');
 
-    // Sensitivity Analysis Elements
-    state.senElements = {
-        indexDown: document.getElementById('sen-index-down'),
-        indexCurrent: document.getElementById('sen-index-current'),
-        indexUp: document.getElementById('sen-index-up'),
-        etfDown: document.getElementById('sen-etf-down'),
-        etfCurrent: document.getElementById('sen-etf-current'),
-        etfUp: document.getElementById('sen-etf-up'),
-        stratDown: document.getElementById('sen-strategy-down'),
-        stratCurrent: document.getElementById('sen-strategy-current'),
-        stratUp: document.getElementById('sen-strategy-up')
+    // Risk Dashboard Elements
+    state.riskElements = {
+        // Key Risk Metrics
+        breakeven: document.getElementById('risk-breakeven'),
+        maxLoss: document.getElementById('risk-max-loss'),
+        maxLossIndex: document.getElementById('risk-max-loss-index'),
+        hedgeCoverage: document.getElementById('risk-hedge-coverage'),
+        hedgeDesc: document.getElementById('risk-hedge-desc'),
+        downside500: document.getElementById('risk-downside-500'),
+        downside1000: document.getElementById('risk-downside-1000'),
+        // Greeks
+        delta: document.getElementById('greek-delta'),
+        theta: document.getElementById('greek-theta'),
+        netPremium: document.getElementById('greek-net-premium'),
+        currentPnl: document.getElementById('greek-current-pnl')
     };
     elements.btnParseInventory = document.getElementById('btn-parse-inventory');
     elements.btnClearInventory = document.getElementById('btn-clear-inventory');
@@ -285,6 +292,9 @@ function bindEvents() {
 
     // Source Switcher (資料來源切換)
     bindSourceSwitcherEvents();
+
+    // Risk Dashboard Strategy Selector
+    bindRiskStrategySelector();
 }
 
 /**
@@ -381,6 +391,38 @@ async function initSourceAvailability() {
             sourceStatus.textContent = 'API 離線';
             sourceStatus.className = 'source-status warning';
         }
+    }
+}
+
+/**
+ * 綁定風險儀表板策略選擇器事件
+ */
+function bindRiskStrategySelector() {
+    const strategyBtns = document.querySelectorAll('.risk-strat-btn');
+
+    strategyBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const strategy = e.target.dataset.riskStrategy;
+            if (!strategy) return;
+
+            // 更新按鈕狀態
+            strategyBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // 更新 state
+            state.riskAnalysisStrategy = strategy;
+
+            // 重新計算風險指標
+            updateSensitivityAnalysis();
+        });
+    });
+
+    // 綁定「剩餘天數」輸入事件 (用於計算 Theta)
+    const daysInput = document.getElementById('risk-days-to-expiry');
+    if (daysInput) {
+        daysInput.addEventListener('input', () => {
+            updateSensitivityAnalysis();
+        });
     }
 }
 
@@ -1496,81 +1538,226 @@ function updateChart() {
 }
 
 /**
- * 更新損益敏感度分析
+ * ====================================================================
+ * 更新風險儀表板 (Risk Dashboard)
+ * ====================================================================
+ * 
+ * 【指標說明】
+ * 
+ * 📍 損益兩平點 (Breakeven):
+ *    - 意義：指數到達這個點位時，總損益正好是零
+ *    - 計算：找出損益曲線穿越零軸的點
+ * 
+ * ⚠️ 最大潛在損失 (Max Loss):
+ *    - 意義：在模擬範圍內，可能遇到的最差情況
+ *    - 計算：找出所有模擬價位中，總損益最小的那個值
+ * 
+ * 🛡️ 避險覆蓋率 (Hedge Coverage):
+ *    - 意義：策略能抵銷多少 ETF 的價格風險
+ *    - 計算：|策略 Delta| ÷ |ETF Delta| × 100%
+ *    - 例如：100% = 完全對沖，50% = 只對沖一半風險
+ * 
+ * 📉 下檔保護 (Downside Protection):
+ *    - 意義：如果指數下跌 500/1000 點，總損益是多少
+ * 
+ * Δ Delta:
+ *    - 意義：指數每上漲 100 點，總損益會增加多少
+ *    - 正數 = 看多曝險（指數漲你賺），負數 = 看空曝險
+ * 
+ * Θ Theta:
+ *    - 意義：時間每過一天，選擇權損益會變動多少
+ *    - 正數 = 賣方收益（時間站你這邊），負數 = 買方損耗
+ *    - 計算：(權利金 × 口數 × 乘數) ÷ 剩餘天數(假設15天)
+ * 
+ * $ 淨權利金 (Net Premium):
+ *    - 意義：收到的權利金減去支出的權利金
+ *    - 正數 = 淨收入，負數 = 淨支出
+ * 
+ * 💰 當前總損益 (Current PnL):
+ *    - 意義：以現在指數計算，ETF + 策略總共賺或賠多少
+ * 
+ * ====================================================================
  */
 function updateSensitivityAnalysis() {
-    const { tseIndex, etfLots, etfCost, etfCurrentPrice, strategies, referenceIndex } = state;
-    const { senElements } = state;
-    if (!senElements.indexCurrent) return; // Safety check
+    const { tseIndex, etfLots, etfCost, etfCurrentPrice, strategies, referenceIndex, priceRange } = state;
+    const { riskElements } = state;
+    if (!riskElements || !riskElements.breakeven) return; // Safety check
 
-    const range = 100;
-    const indexDown = tseIndex - range;
-    const indexUp = tseIndex + range;
-
-    // Helper to format PnL
-    const fmt = (val, isDiff = false) => {
-        const sign = val > 0 ? '+' : (val < 0 ? '' : ''); // Negative numbers have '-' automatically
-        const cls = val > 0 ? 'profit' : (val < 0 ? 'loss' : '');
-        // For diffs, usually explicit + is good. For absolute, maybe distinct.
-        // Let's use standard signed format.
-        const prefix = (isDiff && val > 0) ? '+' : '';
-        return `<span class="${cls}">${prefix}${val.toLocaleString()}</span>`;
+    // Helper to format PnL values with color
+    const formatPnL = (val) => {
+        const cls = val > 0 ? 'value-profit' : (val < 0 ? 'value-loss' : 'value-neutral');
+        const sign = val >= 0 ? '+' : '';
+        return { text: `${sign}${Math.round(val).toLocaleString()}`, cls };
     };
 
-    // Calculate ETF PnL
-    // Note: We use referenceIndex regarding the "Base Point" logic if we want "Accumulated PnL".
-    // But "Sensitivity" usually asks "What if price moves NOW?".
-    // However, our calculator uses `baseIndex` (Reference Index) to determine entry point.
-    // So `calcETFPnL(targetPrice, baseIndex, ...)` gives the absolute PnL at that price relative to entry.
-    // The "Change" is `PnL_at_Target - PnL_at_Current`.
+    // Get the strategy to analyze based on user selection
+    const riskStrategy = state.riskAnalysisStrategy || 'ALL';
 
-    // 1. Absolute PnL at each point (Relative to Entry/Reference)
+    // Collect positions based on selected strategy
+    let analysisPositions = [];
+    let strategyLabel = '';
+
+    if (riskStrategy === 'ALL') {
+        analysisPositions = [
+            ...(strategies.A || []),
+            ...(strategies.B || []),
+            ...(strategies.C || [])
+        ];
+        strategyLabel = '全部策略';
+    } else if (riskStrategy === 'A') {
+        analysisPositions = [...(strategies.A || [])];
+        strategyLabel = '🔴 策略 A';
+    } else if (riskStrategy === 'B') {
+        analysisPositions = [...(strategies.B || [])];
+        strategyLabel = '🔵 策略 B';
+    } else if (riskStrategy === 'C') {
+        analysisPositions = [...(strategies.C || [])];
+        strategyLabel = '🟢 策略 C';
+    }
+
+    // Calculate ETF PnL at a given index
     const getEtfPnL = (idx) => Calculator.calcETFPnL(idx, referenceIndex, etfLots, etfCost, etfCurrentPrice);
 
-    const etfPnL_Current = getEtfPnL(tseIndex);
-    const etfPnL_Down = getEtfPnL(indexDown);
-    const etfPnL_Up = getEtfPnL(indexUp);
-
-    // 2. Strategy PnL at each point
-    // We need to sum up all active strategies (A+B+C) or just the active ones?
-    // Usually "Strategy PnL" means the Option Overlay.
-    // Let's sum all active strategies to show total portfolio sensitivity.
-    const allPositions = [
-        ...(strategies.A || []),
-        ...(strategies.B || []),
-        ...(strategies.C || [])
-    ];
-
+    // Calculate Strategy PnL at a given index
     const getStratPnL = (idx) => {
         let total = 0;
-        allPositions.forEach(pos => {
+        analysisPositions.forEach(pos => {
             total += Calculator.calcPositionPnL(pos, idx);
         });
         return total;
     };
 
-    const stratPnL_Current = getStratPnL(tseIndex);
-    const stratPnL_Down = getStratPnL(indexDown);
-    const stratPnL_Up = getStratPnL(indexUp);
+    // Calculate Total PnL at a given index
+    const getTotalPnL = (idx) => getEtfPnL(idx) + getStratPnL(idx);
 
-    // 3. Render Indices
-    senElements.indexDown.textContent = indexDown.toLocaleString();
-    senElements.indexCurrent.textContent = tseIndex.toLocaleString();
-    senElements.indexUp.textContent = indexUp.toLocaleString();
+    // ============ 1. Calculate Breakeven Points ============
+    const prices = [];
+    const totalPnLs = [];
+    for (let offset = -priceRange; offset <= priceRange; offset += 100) {
+        const price = tseIndex + offset;
+        prices.push(price);
+        totalPnLs.push(getTotalPnL(price));
+    }
+    const breakevens = Calculator.findBreakeven(prices, totalPnLs);
 
-    // 4. Render Values
-    // Current: Show Absolute PnL (Accumulated)
-    // Up/Down: Show CHANGE (Delta) relative to Current
+    if (riskElements.breakeven) {
+        if (breakevens.length === 0) {
+            riskElements.breakeven.textContent = '無';
+        } else if (breakevens.length === 1) {
+            riskElements.breakeven.textContent = breakevens[0].toLocaleString();
+        } else {
+            riskElements.breakeven.textContent = breakevens.map(b => b.toLocaleString()).join(' / ');
+        }
+    }
 
-    // ETF
-    senElements.etfCurrent.innerHTML = fmt(Math.round(etfPnL_Current));
-    senElements.etfDown.innerHTML = fmt(Math.round(etfPnL_Down - etfPnL_Current), true);
-    senElements.etfUp.innerHTML = fmt(Math.round(etfPnL_Up - etfPnL_Current), true);
+    // ============ 2. Calculate Max Loss ============
+    let minPnL = Infinity;
+    let minPnLIndex = tseIndex;
+    for (let i = 0; i < prices.length; i++) {
+        if (totalPnLs[i] < minPnL) {
+            minPnL = totalPnLs[i];
+            minPnLIndex = prices[i];
+        }
+    }
 
-    // Strategy
-    senElements.stratCurrent.innerHTML = fmt(Math.round(stratPnL_Current));
-    senElements.stratDown.innerHTML = fmt(Math.round(stratPnL_Down - stratPnL_Current), true);
-    senElements.stratUp.innerHTML = fmt(Math.round(stratPnL_Up - stratPnL_Current), true);
+    if (riskElements.maxLoss) {
+        const { text, cls } = formatPnL(minPnL);
+        riskElements.maxLoss.textContent = text;
+        riskElements.maxLoss.className = `metric-value ${cls}`;
+    }
+    if (riskElements.maxLossIndex) {
+        riskElements.maxLossIndex.textContent = `@ ${minPnLIndex.toLocaleString()} 點`;
+    }
+
+    // ============ 3. Calculate Hedge Coverage (Delta Ratio) ============
+    // ETF Delta: simplified as change per 100 points
+    const etfDelta100 = getEtfPnL(tseIndex + 100) - getEtfPnL(tseIndex);
+    const stratDelta100 = getStratPnL(tseIndex + 100) - getStratPnL(tseIndex);
+
+    let hedgeCoverage = 0;
+    if (Math.abs(etfDelta100) > 0) {
+        // Negative stratDelta means hedge covers positive etfDelta (for puts)
+        hedgeCoverage = Math.abs(stratDelta100) / Math.abs(etfDelta100) * 100;
+    }
+
+    if (riskElements.hedgeCoverage) {
+        riskElements.hedgeCoverage.textContent = `${hedgeCoverage.toFixed(1)}%`;
+        // Color based on coverage level
+        if (hedgeCoverage >= 80) {
+            riskElements.hedgeCoverage.className = 'metric-value value-profit';
+        } else if (hedgeCoverage >= 50) {
+            riskElements.hedgeCoverage.className = 'metric-value';
+        } else {
+            riskElements.hedgeCoverage.className = 'metric-value value-loss';
+        }
+    }
+
+    // ============ 4. Downside Protection ============
+    const pnl500 = getTotalPnL(tseIndex - 500);
+    const pnl1000 = getTotalPnL(tseIndex - 1000);
+
+    if (riskElements.downside500) {
+        const { text, cls } = formatPnL(pnl500);
+        riskElements.downside500.textContent = text;
+        riskElements.downside500.className = `metric-value ${cls}`;
+    }
+    if (riskElements.downside1000) {
+        const { text, cls } = formatPnL(pnl1000);
+        riskElements.downside1000.textContent = `-1000點: ${text}`;
+        riskElements.downside1000.className = `metric-sub ${cls}`;
+    }
+
+    // ============ 5. Portfolio Delta (Change per 100 points) ============
+    const totalDelta = etfDelta100 + stratDelta100;
+    if (riskElements.delta) {
+        const { text, cls } = formatPnL(totalDelta);
+        riskElements.delta.textContent = text;
+        riskElements.delta.className = `greek-value ${cls}`;
+    }
+
+    // ===== 6. 組合 Theta =====
+    // 簡化估算：使用用戶輸入的剩餘天數
+    // 賣方：每天賺取 (權利金/剩餘天數) 的時間價值 → 正數
+    // 買方：每天損失 (權利金/剩餘天數) 的時間價值 → 負數
+    let totalTheta = 0;
+
+    // 從輸入欄位讀取剩餘天數，預設15天
+    const daysInput = document.getElementById('risk-days-to-expiry');
+    const daysToExpiry = daysInput ? (parseInt(daysInput.value) || 15) : 15;
+
+    analysisPositions.forEach(pos => {
+        if (pos.type === 'Futures' || pos.product === '微台期貨') return; // Futures have no theta
+        const multiplier = pos.product === '微台' ? 10 : 50;
+        // Theta estimate: 權利金總價值 / 剩餘天數
+        const dailyDecay = (pos.premium * pos.lots * multiplier) / daysToExpiry;
+        if (pos.direction === '賣出') {
+            totalTheta += dailyDecay; // 賣方賺取時間價值
+        } else {
+            totalTheta -= dailyDecay; // 買方損失時間價值
+        }
+    });
+
+    if (riskElements.theta) {
+        const { text, cls } = formatPnL(totalTheta);
+        riskElements.theta.textContent = `${text}/日`;
+        riskElements.theta.className = `greek-value ${cls}`;
+    }
+
+    // ============ 7. Net Premium ============
+    const premiumSummary = Calculator.calculatePremiumSummary(analysisPositions);
+    if (riskElements.netPremium) {
+        const { text, cls } = formatPnL(premiumSummary.netPremium);
+        riskElements.netPremium.textContent = text;
+        riskElements.netPremium.className = `greek-value ${cls}`;
+    }
+
+    // ============ 8. Current Total PnL ============
+    const currentTotalPnL = getTotalPnL(tseIndex);
+    if (riskElements.currentPnl) {
+        const { text, cls } = formatPnL(currentTotalPnL);
+        riskElements.currentPnl.textContent = text;
+        riskElements.currentPnl.className = `greek-value ${cls}`;
+    }
 }
 
 /**
@@ -2090,24 +2277,205 @@ function bindAIEvents() {
 
     // 載入儲存的 API Key
     const savedKey = localStorage.getItem('gemini_api_key');
+    const keyStatus = document.getElementById('ai-key-status');
+
     if (savedKey && elements.aiApiKeyInput) {
         elements.aiApiKeyInput.value = savedKey;
         state.apiKey = savedKey;
+        // 顯示已載入狀態
+        elements.aiApiKeyInput.style.borderColor = 'var(--success)';
+        if (keyStatus) {
+            keyStatus.textContent = '✓ 已記住';
+            keyStatus.style.color = 'var(--success)';
+        }
+    } else {
+        if (keyStatus) {
+            keyStatus.textContent = '(未設定)';
+            keyStatus.style.color = 'var(--text-muted)';
+        }
     }
 
-    elements.aiApiKeyInput?.addEventListener('change', (e) => {
+    // 即時保存 API Key (用 input 事件而非 change)
+    elements.aiApiKeyInput?.addEventListener('input', (e) => {
         state.apiKey = e.target.value.trim();
-        localStorage.setItem('gemini_api_key', state.apiKey);
+        if (state.apiKey) {
+            localStorage.setItem('gemini_api_key', state.apiKey);
+            // 顯示已保存狀態
+            elements.aiApiKeyInput.style.borderColor = 'var(--success)';
+            if (keyStatus) {
+                keyStatus.textContent = '✓ 已保存';
+                keyStatus.style.color = 'var(--success)';
+            }
+            console.log('✅ API Key 已保存到 localStorage');
+        } else {
+            elements.aiApiKeyInput.style.borderColor = '';
+            if (keyStatus) {
+                keyStatus.textContent = '(未設定)';
+                keyStatus.style.color = 'var(--text-muted)';
+            }
+        }
     });
 
     elements.btnAIAnalysis?.addEventListener('click', handleAIAnalysis);
     elements.btnCloseAI?.addEventListener('click', () => {
         elements.aiResultCard.style.display = 'none';
     });
+
+    // ===== AI 助手區塊事件綁定 =====
+    bindAIAssistantEvents();
 }
 
 /**
- * 處理 AI 分析請求
+ * 綁定 AI 助手區塊事件
+ */
+function bindAIAssistantEvents() {
+    // 快捷按鈕
+    const actionButtons = document.querySelectorAll('.btn-ai-action');
+    actionButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.aiAction;
+            handleAIAction(action);
+        });
+    });
+
+    // 自訂問題發送按鈕
+    const askBtn = document.getElementById('btn-ai-ask');
+    const questionInput = document.getElementById('ai-question');
+
+    askBtn?.addEventListener('click', () => {
+        const question = questionInput?.value.trim();
+        if (question) {
+            handleAIAction('custom', question);
+        }
+    });
+
+    // Enter 鍵發送
+    questionInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const question = questionInput.value.trim();
+            if (question) {
+                handleAIAction('custom', question);
+            }
+        }
+    });
+
+    // 關閉回應
+    document.getElementById('btn-close-ai-response')?.addEventListener('click', () => {
+        document.getElementById('ai-response-area').style.display = 'none';
+    });
+}
+
+/**
+ * 處理 AI 助手動作
+ */
+async function handleAIAction(action, customQuestion = '') {
+    if (!state.apiKey) {
+        showToast('error', '請先在側邊欄設定 Google Gemini API Key');
+        return;
+    }
+
+    const responseArea = document.getElementById('ai-response-area');
+    const loadingIndicator = document.getElementById('ai-loading-indicator');
+    const responseContent = document.getElementById('ai-response-content');
+
+    // 顯示載入
+    responseArea.style.display = 'block';
+    loadingIndicator.style.display = 'block';
+    responseContent.innerHTML = '';
+
+    try {
+        const prompt = generateAIAssistantPrompt(action, customQuestion);
+        const response = await callGeminiAPI(prompt, state.apiKey);
+
+        // 渲染回應
+        responseContent.innerHTML = renderMarkdown(response);
+        loadingIndicator.style.display = 'none';
+
+        // 清空輸入框
+        const questionInput = document.getElementById('ai-question');
+        if (questionInput) questionInput.value = '';
+
+        // 捲動到回應區
+        responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (error) {
+        console.error('AI Assistant Error:', error);
+        loadingIndicator.style.display = 'none';
+        responseContent.innerHTML = `<p style="color: var(--danger);">❌ 錯誤: ${error.message}</p>`;
+    }
+}
+
+/**
+ * 產生 AI 助手的 Prompt
+ */
+function generateAIAssistantPrompt(action, customQuestion) {
+    // 收集當前狀態資訊
+    const currentStrategy = state.strategies[state.currentStrategy] || [];
+    const positionsText = currentStrategy.map(pos => {
+        const type = pos.product === '微台期貨' || pos.type === 'Futures' ? '期貨' : `選擇權 ${pos.type}`;
+        return `- ${type} ${pos.direction} ${pos.strike} @ ${pos.premium || 0} (${pos.lots}口)`;
+    }).join('\n');
+
+    const contextInfo = `
+【目前持倉資訊】
+- 加權指數: ${state.tseIndex}
+- 00631L: ${state.etfLots} 張 (成本 ${state.etfCost}, 現價 ${state.etfCurrentPrice})
+- 策略 ${state.currentStrategy} 倉位:
+${positionsText || '(無倉位)'}
+`;
+
+    const basePrompt = '你是一位專業的台股選擇權避險顧問。請用繁體中文回答，回答要簡潔實用。\n\n' + contextInfo;
+
+    switch (action) {
+        case 'risk-check':
+            return basePrompt + `
+【任務】風險預警分析
+請評估目前持倉的風險等級 (🟢低/🟡中/🔴高)，並指出：
+1. 主要風險因素 (方向風險、時間風險、波動率風險)
+2. 最需要注意的情境 (大跌/盤整/大漲)
+3. 建議的應對措施 (具體操作建議)
+限 200 字內。`;
+
+        case 'strategy-suggest':
+            return basePrompt + `
+【任務】策略推薦
+根據目前持倉，請推薦一個適合的避險調整策略：
+1. 推薦策略名稱和原因
+2. 具體操作 (買/賣哪個履約價的 Call/Put)
+3. 預期效果 (能降低多少風險或增加多少收益)
+限 200 字內。`;
+
+        case 'explain-position':
+            return basePrompt + `
+【任務】倉位分析
+請用簡單易懂的方式解釋目前的持倉：
+1. 這組合的策略類型是什麼 (例如: Covered Call, Protective Put, 價差策略等)
+2. 獲利情境 (什麼情況下會賺錢)
+3. 虧損情境 (什麼情況下會賠錢)
+4. 最大獲利/最大虧損估計
+限 200 字內。`;
+
+        case 'what-if':
+            return basePrompt + `
+【任務】情境模擬
+請分析以下三種情境對目前持倉的影響：
+1. 🔴 大跌 500 點 (估計損益變化)
+2. ⚪ 盤整不動 (時間價值影響)
+3. 🟢 大漲 500 點 (估計損益變化)
+並給出哪種情境最有利/最危險。
+限 200 字內。`;
+
+        case 'custom':
+        default:
+            return basePrompt + `
+【用戶問題】
+${customQuestion}
+
+請針對上述問題提供專業但易懂的回答。如果問題與目前持倉相關，請結合持倉資訊回答。`;
+    }
+}
+
+/**
+ * 處理 AI 分析請求 (原有的分析按鈕)
  */
 async function handleAIAnalysis() {
     if (!state.apiKey) {
@@ -2146,27 +2514,45 @@ async function handleAIAnalysis() {
  * 呼叫 Google Gemini API
  */
 async function callGeminiAPI(prompt, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    // 自動降級機制：嘗試多種模型直到成功
+    const models = [
+        'gemini-1.5-flash',
+        'gemini-2.0-flash-lite-preview-02-05', 
+        'gemini-flash-latest',
+        'gemini-pro'
+    ];
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            contents: [{
-                parts: [{ text: prompt }]
-            }]
-        })
-    });
+    let lastError = null;
 
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || 'API request failed');
+    for (const model of models) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } else {
+                // 如果是 404 (沒權限) 或 429 (額度滿)，嘗試下一個模型
+                if (response.status === 404 || response.status === 429) {
+                    continue;
+                }
+                const err = await response.json();
+                lastError = err.error?.message || response.statusText;
+            }
+        } catch (e) {
+            lastError = e.message;
+        }
     }
 
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+    throw new Error(`AI 請求失敗 (額度滿或權限不足)。請稍後再試。`);
 }
 
 /**
@@ -2981,28 +3367,8 @@ async function handleCopySyncLink() {
     }
 }
 
-// ======== AI 策略分析功能 ========
+// (原重複的 bindAIEvents 已移除，使用第2270行的版本)
 
-function bindAIEvents() {
-    elements.btnAiAnalysis = document.getElementById('btn-ai-analysis');
-    elements.aiLoading = document.getElementById('ai-loading');
-    elements.aiResultCard = document.getElementById('ai-result-card');
-    elements.btnCloseAi = document.getElementById('btn-close-ai');
-    elements.aiResultContent = document.getElementById('ai-result-content');
-    elements.aiApiKey = document.getElementById('ai-api-key');
-
-    // Button event listener
-    elements.btnAiAnalysis?.addEventListener('click', handleAIAnalysis);
-
-    // Close button event listener
-    elements.btnCloseAi?.addEventListener('click', () => {
-        if (elements.aiResultCard) elements.aiResultCard.style.display = 'none';
-    });
-}
-
-/**
- * 綁定 AI 庫存判讀相關事件
- */
 /**
  * 綁定 AI 庫存判讀相關事件 (功能已移除)
  */
