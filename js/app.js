@@ -505,55 +505,87 @@ async function initApp() {
 }
 
 /**
- * 抓取市場即時價格（使用多個 CORS proxy 備援）
+ * 抓取市場即時價格
+ * 優先：後端 API 台指期貨價格 (支援夜盤)
+ * 備援：CORS proxy 抓取 Yahoo Finance 加權指數 (僅日盤)
  */
 async function fetchMarketPrices() {
-    // 多個 CORS proxy 備援（更新為更可靠的服務）
-    const corsProxies = [
+    let tseSuccess = false;
+    let etfSuccess = false;
+    let futuresSuccess = false;
+
+    // === 1. 優先嘗試從後端 API 取得台指期貨價格 (支援夜盤) ===
+    try {
+        const centerStrike = Math.round(state.tseIndex / 100) * 100 || 23000;
+        // 使用 yahoo 來源以獲取期貨價格
+        const apiUrl = `http://localhost:5000/api/option-chain?center=${centerStrike}&range=1&source=yahoo`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.json();
+            // 後端 Yahoo scraper 回傳的 center_price 是台指期近一 (WTX&)，包含夜盤
+            if (data.center_price && data.center_price > 1000) {
+                state.tseIndex = Math.round(data.center_price * 100) / 100;
+                if (!state.referenceIndex) state.referenceIndex = state.tseIndex;
+                futuresSuccess = true;
+                tseSuccess = true;
+                console.log('✅ 台指期貨價格抓取成功 (後端 API):', state.tseIndex, '來源:', data.source);
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ 後端 API 無法連線，將使用 CORS proxy 備援:', e.message);
+    }
+
+    // === 2. 備援：使用 CORS proxy 抓取 Yahoo Finance 加權指數 (僅日盤) ===
+    if (!tseSuccess) {
+        const corsProxies = [
+            'https://corsproxy.io/?url=',
+            'https://api.allorigins.win/raw?url=',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
+
+        for (const proxy of corsProxies) {
+            try {
+                const tseUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=5d');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                const tseRes = await fetch(proxy + tseUrl, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (tseRes.ok) {
+                    const tseData = await tseRes.json();
+                    const tsePrice = tseData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+                    if (tsePrice && tsePrice > 1000) {
+                        state.tseIndex = Math.round(tsePrice * 100) / 100;
+                        if (!state.referenceIndex) state.referenceIndex = state.tseIndex;
+                        tseSuccess = true;
+                        console.log('✅ 加權指數抓取成功 (CORS proxy):', state.tseIndex, '使用:', proxy);
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn(`❌ CORS proxy ${proxy} 失敗:`, e.message);
+            }
+        }
+    }
+
+    // === 3. 抓取 00631L ETF 價格 ===
+    const etfProxies = [
         'https://corsproxy.io/?url=',
         'https://api.allorigins.win/raw?url=',
         'https://api.codetabs.com/v1/proxy?quest='
     ];
 
-    let successfulProxy = null;
-    let tseSuccess = false;
-    let etfSuccess = false;
-
-    // 嘗試抓取加權指數
-    for (const proxy of corsProxies) {
-        try {
-            const tseUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=5d');
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-            const tseRes = await fetch(proxy + tseUrl, {
-                headers: { 'Accept': 'application/json' },
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (tseRes.ok) {
-                const tseData = await tseRes.json();
-                const tsePrice = tseData?.chart?.result?.[0]?.meta?.regularMarketPrice;
-                if (tsePrice && tsePrice > 1000) {
-                    state.tseIndex = Math.round(tsePrice * 100) / 100;
-                    // 如果尚未設定基準指數 (例如第一次載入)，預設使用當前指數
-                    if (!state.referenceIndex) state.referenceIndex = state.tseIndex;
-                    successfulProxy = proxy;
-                    tseSuccess = true;
-                    console.log('✅ 加權指數抓取成功:', state.tseIndex, '使用:', proxy);
-                    break;
-                }
-            }
-        } catch (e) {
-            console.warn(`❌ CORS proxy ${proxy} 失敗:`, e.message);
-        }
-    }
-
-    // 抓取 00631L（使用成功的 proxy 或重試所有）
-    const proxiesToTry = successfulProxy ? [successfulProxy, ...corsProxies.filter(p => p !== successfulProxy)] : corsProxies;
-
-    for (const proxy of proxiesToTry) {
+    for (const proxy of etfProxies) {
         try {
             const etfUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/00631L.TW?interval=1d&range=5d');
             const controller = new AbortController();
@@ -580,14 +612,15 @@ async function fetchMarketPrices() {
         }
     }
 
-    // 顯示結果
+    // === 4. 顯示結果 ===
+    const indexLabel = futuresSuccess ? '台指期' : '加權';
     if (tseSuccess && etfSuccess) {
-        showToast('success', `報價更新成功：加權 ${state.tseIndex.toLocaleString()} / 00631L ${state.etfCurrentPrice}`);
+        showToast('success', `報價更新成功：${indexLabel} ${state.tseIndex.toLocaleString()} / 00631L ${state.etfCurrentPrice}`);
     } else if (!tseSuccess && !etfSuccess) {
         console.log('API 抓取失敗，請手動輸入即時價格');
         showToast('warning', '無法自動抓取報價，請手動輸入');
     } else {
-        showToast('info', `部分報價更新：${tseSuccess ? '加權 ' + state.tseIndex.toLocaleString() : '加權失敗'} / ${etfSuccess ? '00631L ' + state.etfCurrentPrice : '00631L失敗'}`);
+        showToast('info', `部分報價更新：${tseSuccess ? indexLabel + ' ' + state.tseIndex.toLocaleString() : '指數失敗'} / ${etfSuccess ? '00631L ' + state.etfCurrentPrice : '00631L失敗'}`);
     }
 }
 
@@ -968,9 +1001,6 @@ function createPositionItem(pos, index, strategy = 'A') {
     const isFutures = pos.product === '微台期貨' || pos.type === 'Futures';
     const isSelected = state.selectedPositions.has(`${strategy}-${index}`);
 
-    let tagsHTML = '';
-    let detailsHTML = '';
-
     // 群組標記
     const groupBadge = pos.groupId ? `<span class="group-badge">#${pos.groupId}</span>` : '';
 
@@ -982,31 +1012,53 @@ function createPositionItem(pos, index, strategy = 'A') {
     // 1. Badge Logic (Merged)
     let badgeHTML = '';
     if (isFutures) {
-        // Futures: Always Sell for this app? Or depends on logic. 
-        // Logic says: `pos.product === '微台期貨'` or Type=Futures. Hardcoded `tag-sell` "做空" in original.
-        // Let's stick to original text but unified badge style.
         badgeHTML = `<span class="pos-badge badge-sell">微台·空</span>`;
     } else {
         const isBuy = pos.direction === '買進';
         const isCall = pos.type === 'Call';
         const actionText = isBuy ? '買' : '賣';
-        const typeText = isCall ? 'Call' : 'Put'; // Or 買權/賣權 if space permits. User suggested "賣·Call"
+        const typeText = isCall ? 'Call' : 'Put';
         const badgeClass = isBuy ? 'badge-buy' : 'badge-sell';
-
-        // Ex: "買·Call" or "賣·Put"
         badgeHTML = `<span class="pos-badge ${badgeClass}">${actionText}·${typeText}</span>`;
     }
 
-    // 2. Details (Strike, Stepper, Price)
-    // Structure: [Strike] [Stepper] [Price]
+    // 2. 計算浮動損益
+    const currentPrice = pos.currentPrice || 0;
+    const entryPrice = isFutures ? pos.strike : pos.premium;
+    let floatingPnL = 0;
+
+    if (currentPrice > 0 && pos.lots > 0) {
+        if (isFutures) {
+            // 微台期貨(做空): 損益 = (進場價 - 目前價) × 口數 × 10
+            floatingPnL = (pos.strike - currentPrice) * pos.lots * 10;
+        } else {
+            // 選擇權: 買進=(目前-成本)×口數×50, 賣出=(成本-目前)×口數×50
+            const multiplier = 50;
+            if (pos.direction === '買進') {
+                floatingPnL = (currentPrice - pos.premium) * pos.lots * multiplier;
+            } else {
+                floatingPnL = (pos.premium - currentPrice) * pos.lots * multiplier;
+            }
+        }
+    }
+    floatingPnL = Math.round(floatingPnL);
+
+    const pnlClass = floatingPnL >= 0 ? 'profit' : 'loss';
+    const pnlSign = floatingPnL >= 0 ? '+' : '';
+    const pnlDisplay = currentPrice > 0 ? `${pnlSign}${floatingPnL.toLocaleString()}` : '--';
+
+    // 3. Details (Strike, Stepper, Entry Price, Current Price, PnL)
+    let detailsHTML = '';
     if (isFutures) {
         detailsHTML = `
-            <span class="pos-strike">進場 ${pos.strike.toLocaleString()}</span>
+            <span class="pos-strike">${pos.strike.toLocaleString()}</span>
             <div class="pos-stepper">
                 <button class="lots-btn lots-minus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>−</button>
                 <span class="lots-value">${pos.lots}</span>
                 <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>+</button>
             </div>
+            <input type="number" class="pos-current-price-input" data-index="${index}" data-strategy="${strategy}" value="${currentPrice || ''}" placeholder="現價" step="1" title="目前成交價">
+            <span class="pos-floating-pnl ${pnlClass}">${pnlDisplay}</span>
         `;
     } else {
         detailsHTML = `
@@ -1017,6 +1069,8 @@ function createPositionItem(pos, index, strategy = 'A') {
                 <button class="lots-btn lots-plus" data-index="${index}" data-strategy="${strategy}" ${pos.isClosed ? 'disabled' : ''}>+</button>
             </div>
             <span class="pos-price">${pos.premium}</span>
+            <input type="number" class="pos-current-price-input" data-index="${index}" data-strategy="${strategy}" value="${currentPrice || ''}" placeholder="現價" step="1" title="目前成交價">
+            <span class="pos-floating-pnl ${pnlClass}">${pnlDisplay}</span>
         `;
     }
 
@@ -1053,7 +1107,58 @@ function createPositionItem(pos, index, strategy = 'A') {
         btn.addEventListener('click', handleLotsStepper);
     });
 
+    // 綁定目前成交價輸入事件
+    const currentPriceInput = div.querySelector('.pos-current-price-input');
+    if (currentPriceInput) {
+        currentPriceInput.addEventListener('input', handleCurrentPriceInput);
+    }
+
     return div;
+}
+
+/**
+ * 處理目前成交價輸入變更
+ */
+function handleCurrentPriceInput(e) {
+    const index = parseInt(e.target.dataset.index);
+    const strategy = e.target.dataset.strategy;
+    const value = parseFloat(e.target.value) || 0;
+
+    const positions = state.strategies[strategy];
+    if (positions && positions[index]) {
+        positions[index].currentPrice = value;
+
+        // 即時更新該行的損益顯示
+        const row = e.target.closest('.position-item');
+        const pnlElement = row?.querySelector('.pos-floating-pnl');
+        if (pnlElement) {
+            const pos = positions[index];
+            const isFutures = pos.product === '微台期貨' || pos.type === 'Futures';
+            let floatingPnL = 0;
+
+            if (value > 0 && pos.lots > 0) {
+                if (isFutures) {
+                    floatingPnL = (pos.strike - value) * pos.lots * 10;
+                } else {
+                    const multiplier = 50;
+                    if (pos.direction === '買進') {
+                        floatingPnL = (value - pos.premium) * pos.lots * multiplier;
+                    } else {
+                        floatingPnL = (pos.premium - value) * pos.lots * multiplier;
+                    }
+                }
+            }
+            floatingPnL = Math.round(floatingPnL);
+
+            const pnlClass = floatingPnL >= 0 ? 'profit' : 'loss';
+            const pnlSign = floatingPnL >= 0 ? '+' : '';
+            pnlElement.textContent = value > 0 ? `${pnlSign}${floatingPnL.toLocaleString()}` : '--';
+            pnlElement.className = `pos-floating-pnl ${pnlClass}`;
+        }
+
+        // 延遲儲存
+        saveDataDebounced();
+    }
 }
 
 /**

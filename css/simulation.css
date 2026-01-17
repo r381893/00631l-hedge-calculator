@@ -1,0 +1,105 @@
+/* Simulation Lab Styles */
+
+#simulation-card {
+    border-top: 4px solid #8e44ad;
+    /* Purple accent for simulation */
+    background: linear-gradient(to bottom, #1e1e2d, #1a1a26);
+}
+
+.sim-control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.sim-control-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sim-control-item label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.range-with-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.range-with-input input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+}
+
+.range-with-input input[type="number"] {
+    width: 80px;
+    padding: 4px 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    text-align: right;
+}
+
+.sim-value-display {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+.sim-value-display span {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Results Grid */
+.sim-result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+@media (max-width: 600px) {
+    .sim-result-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sim-result-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sim-result-card.total {
+    background: rgba(142, 68, 173, 0.1);
+    border-color: rgba(142, 68, 173, 0.3);
+}
+
+.sim-result-card .label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.sim-result-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.sim-result-card .sub-value,
+.sim-result-card .diff {
+    font-size: 0.9rem;
+    font-weight: 500;
+}

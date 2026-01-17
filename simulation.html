@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模擬分析中心 - 00631L 避險計算器</title>
+    <meta name="description" content="多情境損益模擬分析工具 - 三策略比較">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="css/style.css?v=1.1.47">
+    <link rel="stylesheet" href="css/simulation.css?v=1.1.47">
+    <style>
+        .sim-page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .page-header h1 {
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-color);
+        }
+
+        /* Tab Navigation */
+        .sim-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .sim-tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .sim-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sim-tab.active {
+            color: var(--primary-color);
+        }
+
+        .sim-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary-color);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .sim-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .sim-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Strategy Summary Cards */
+        .strategy-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .strategy-summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .strategy-summary-card {
+            padding: 16px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid var(--border-color);
+        }
+
+        .strategy-summary-card.strategy-a {
+            border-left: 4px solid #ef4444;
+        }
+
+        .strategy-summary-card.strategy-b {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .strategy-summary-card.strategy-c {
+            border-left: 4px solid #22c55e;
+        }
+
+        .strategy-summary-card h4 {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+        }
+
+        .strategy-summary-card .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .strategy-summary-card .stat-row span:first-child {
+            color: var(--text-secondary);
+        }
+
+        /* Controls */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 10px 12px;
+            background: var(--input-bg, #1e293b);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary, #fff);
+            font-size: 1rem;
+        }
+
+        /* 下拉選單選項樣式 */
+        .control-group select option {
+            background: #1e293b;
+            color: #fff;
+            padding: 10px;
+        }
+
+        .control-group select option:hover,
+        .control-group select option:checked {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        /* Results Table with 3 Strategies */
+        .results-table-container {
+            max-height: 500px;
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 10px 12px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .results-table th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .results-table th:first-child,
+        .results-table td:first-child {
+            text-align: left;
+        }
+
+        .results-table .col-a {
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .results-table .col-b {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .results-table .col-c {
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        /* Chart */
+        .chart-container {
+            margin-top: 24px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-container h3 {
+            margin: 0 0 16px 0;
+            font-size: 1.1rem;
+        }
+
+        /* Monte Carlo Stats Summary */
+        .results-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            padding: 20px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+        }
+
+        .results-summary .summary-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .results-summary .summary-item .label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .results-summary .summary-item .value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .results-summary .summary-item .value.profit {
+            color: #22c55e;
+        }
+
+        .results-summary .summary-item .value.loss {
+            color: #ef4444;
+        }
+
+        /* Scenario Cards */
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .scenario-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .scenario-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .scenario-card.selected {
+            border-color: var(--primary-color);
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .scenario-card h4 {
+            margin: 0 0 6px 0;
+            font-size: 1rem;
+        }
+
+        .scenario-card p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Actions */
+        .action-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sim-page-container">
+        <!-- Header -->
+        <div class="page-header">
+            <h1>🧪 模擬分析中心</h1>
+            <a href="index.html" class="back-link">← 返回主頁</a>
+        </div>
+
+        <!-- Strategy Summary Cards -->
+        <div class="strategy-summary-grid">
+            <div class="strategy-summary-card strategy-a">
+                <h4>🔴 策略 A</h4>
+                <div class="stat-row"><span>選擇權部位:</span><span id="info-a-count">0 口</span></div>
+                <div class="stat-row"><span>已實現損益:</span><span id="info-a-realized">0</span></div>
+            </div>
+            <div class="strategy-summary-card strategy-b">
+                <h4>🔵 策略 B</h4>
+                <div class="stat-row"><span>選擇權部位:</span><span id="info-b-count">0 口</span></div>
+                <div class="stat-row"><span>已實現損益:</span><span id="info-b-realized">0</span></div>
+            </div>
+            <div class="strategy-summary-card strategy-c">
+                <h4>🟢 策略 C</h4>
+                <div class="stat-row"><span>選擇權部位:</span><span id="info-c-count">0 口</span></div>
+                <div class="stat-row"><span>已實現損益:</span><span id="info-c-realized">0</span></div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+            <span>ETF: <strong id="info-etf-lots">0</strong> 張</span> |
+            <span>當前指數: <strong id="info-current-index">--</strong></span>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="sim-tabs">
+            <button class="sim-tab active" data-panel="batch">📊 批次模擬</button>
+            <button class="sim-tab" data-panel="scenario">🎭 情境劇本</button>
+        </div>
+
+        <!-- Panel: Batch -->
+        <div class="sim-panel active" id="panel-batch">
+            <div class="card">
+                <h3>📊 批次模擬 - 三策略比較</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">設定模擬天數與每日漲跌幅，一次產生整段期間三個策略的損益比較表。</p>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>天數設定方式</label>
+                        <select id="batch-days-mode">
+                            <option value="fixed">固定天數</option>
+                            <option value="settlement">依結算日計算</option>
+                        </select>
+                    </div>
+                    <div class="control-group" id="batch-days-group">
+                        <label>模擬天數</label>
+                        <input type="number" id="batch-days" value="10" min="1" max="60">
+                    </div>
+                    <div class="control-group" id="settlement-date-group" style="display: none;">
+                        <label>結算日 (到期日)</label>
+                        <input type="date" id="settlement-date">
+                        <small id="days-remaining" style="color: var(--text-secondary); margin-top: 4px;">距結算日: --
+                            天</small>
+                    </div>
+                    <div class="control-group">
+                        <label>起始指數</label>
+                        <input type="number" id="batch-start-index" placeholder="自動帶入當前指數">
+                    </div>
+                    <div class="control-group" id="daily-change-group">
+                        <label id="daily-change-label">每日漲跌 (點)</label>
+                        <input type="number" id="batch-daily-change" value="250" step="10">
+                        <small id="daily-change-hint" style="color: var(--text-secondary); margin-top: 4px;"></small>
+                    </div>
+                    <div class="control-group">
+                        <label>波動模式</label>
+                        <select id="batch-volatility-mode">
+                            <option value="fixed">📉 固定漲跌</option>
+                            <option value="random">🎲 隨機波動 (±範圍)</option>
+                            <option value="random-large">🎰 大幅隨機 (±2倍)</option>
+                            <option value="trend">📈 趨勢遞增</option>
+                            <option value="trend-down">📉 趨勢遞減</option>
+                            <option value="v-shape">📉📈 V型反轉</option>
+                            <option value="inverse-v">📈📉 倒V型</option>
+                            <option value="sideways">↔️ 小幅震盪</option>
+                            <option value="monte-carlo">🎯 蒙地卡羅模擬</option>
+                        </select>
+                    </div>
+                    <div class="control-group" id="mc-runs-group" style="display: none;">
+                        <label>模擬次數 (蒙地卡羅)</label>
+                        <input type="number" id="mc-runs" value="100" min="10" max="1000" step="10">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-full" id="btn-run-batch">🚀 執行批次模擬</button>
+
+                <!-- 蒙地卡羅統計結果 -->
+                <div id="mc-stats" class="results-summary" style="display: none; margin-top: 20px;">
+                    <h4 style="grid-column: 1/-1; margin: 0 0 12px 0;">🎯 蒙地卡羅模擬統計 (共 <span
+                            id="mc-total-runs">100</span> 次)</h4>
+                    <div class="summary-item">
+                        <div class="label">策略A 平均損益</div>
+                        <div class="value" id="mc-avg-a">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">策略B 平均損益</div>
+                        <div class="value" id="mc-avg-b">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">策略C 平均損益</div>
+                        <div class="value" id="mc-avg-c">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">策略A 勝率</div>
+                        <div class="value" id="mc-winrate-a">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">策略B 勝率</div>
+                        <div class="value" id="mc-winrate-b">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">策略C 勝率</div>
+                        <div class="value" id="mc-winrate-c">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">🔴 策略A 最大虧損</div>
+                        <div class="value loss" id="mc-maxloss-a">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">🔵 策略B 最大虧損</div>
+                        <div class="value loss" id="mc-maxloss-b">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">🟢 策略C 最大虧損</div>
+                        <div class="value loss" id="mc-maxloss-c">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">🔴 策略A 最大獲利</div>
+                        <div class="value profit" id="mc-maxprofit-a">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">🔵 策略B 最大獲利</div>
+                        <div class="value profit" id="mc-maxprofit-b">--</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">🟢 策略C 最大獲利</div>
+                        <div class="value profit" id="mc-maxprofit-c">--</div>
+                    </div>
+                </div>
+
+
+                <div class="results-table-container">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>天數</th>
+                                <th>指數</th>
+                                <th>累計變動</th>
+                                <th>ETF 損益</th>
+                                <th class="col-a">🔴 策略A</th>
+                                <th class="col-b">🔵 策略B</th>
+                                <th class="col-c">🟢 策略C</th>
+                                <th class="col-a">總損益A</th>
+                                <th class="col-b">總損益B</th>
+                                <th class="col-c">總損益C</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batch-result-body">
+                            <tr>
+                                <td colspan="10" style="text-align: center; color: var(--text-secondary);">
+                                    請設定參數後點擊「執行批次模擬」</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="chart-container">
+                    <h3>📈 三策略損益曲線</h3>
+                    <canvas id="batch-chart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel C: Scenario -->
+        <div class="sim-panel" id="panel-scenario">
+            <div class="card">
+                <h3>🎭 情境劇本 - 三策略比較</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">點擊任一情境卡片即可執行模擬，天數會自動根據您的設定調整。</p>
+
+                <div class="controls-grid" style="margin-bottom: 20px;">
+                    <div class="control-group">
+                        <label>模擬天數</label>
+                        <input type="number" id="scenario-days" value="3" min="1" max="30">
+                    </div>
+                    <div class="control-group">
+                        <label>起始指數</label>
+                        <input type="number" id="scenario-start-index" placeholder="自動帶入當前指數">
+                    </div>
+                </div>
+
+                <div class="scenario-grid">
+                    <div class="scenario-card" data-scenario="crash" onclick="runScenario('crash')">
+                        <h4>🔻 急跌</h4>
+                        <p>每日下跌 <strong>300</strong> 點</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="rally" onclick="runScenario('rally')">
+                        <h4>🚀 急漲</h4>
+                        <p>每日上漲 <strong>300</strong> 點</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="moderate-drop" onclick="runScenario('moderate-drop')">
+                        <h4>📉 緩跌</h4>
+                        <p>每日下跌 <strong>100</strong> 點</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="moderate-rise" onclick="runScenario('moderate-rise')">
+                        <h4>📈 緩漲</h4>
+                        <p>每日上漲 <strong>100</strong> 點</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="v-shape" onclick="runScenario('v-shape')">
+                        <h4>📉📈 V型</h4>
+                        <p>先跌後漲</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="inverse-v" onclick="runScenario('inverse-v')">
+                        <h4>📈📉 倒V</h4>
+                        <p>先漲後跌</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="sideways" onclick="runScenario('sideways')">
+                        <h4>↔️ 盤整</h4>
+                        <p>±150 點震盪</p>
+                    </div>
+                    <div class="scenario-card" data-scenario="black-swan" onclick="runScenario('black-swan')">
+                        <h4>🦢 黑天鵝</h4>
+                        <p>首日暴跌 <strong>1000</strong> 點</p>
+                    </div>
+                </div>
+
+                <!-- 情境結果表格 -->
+                <div class="results-table-container" style="margin-top: 20px;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>天數</th>
+                                <th>指數</th>
+                                <th>累計變動</th>
+                                <th>ETF 損益</th>
+                                <th class="col-a">🔴 策略A</th>
+                                <th class="col-b">🔵 策略B</th>
+                                <th class="col-c">🟢 策略C</th>
+                                <th class="col-a">總損益A</th>
+                                <th class="col-b">總損益B</th>
+                                <th class="col-c">總損益C</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scenario-result-body">
+                            <tr>
+                                <td colspan="10" style="text-align: center; color: var(--text-secondary);">
+                                    👆 點擊上方任一情境卡片即可執行模擬</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="chart-container" id="scenario-chart-container" style="display: none;">
+                    <h3>📈 情境模擬結果</h3>
+                    <canvas id="scenario-chart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/calculator.js?v=1.1.47"></script>
+    <script>
+        // ======== State ========
+        const simState = {
+            etfLots: 0, etfCost: 100, etfCurrentPrice: 100, tseIndex: 23000,
+            strategies: { A: [], B: [], C: [] },
+            realizedPnL: { A: 0, B: 0, C: 0 },
+            dailyHistory: [],
+            selectedScenario: null,
+            batchChart: null,
+            scenarioChart: null
+        };
+
+        // ======== Init ========
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStateFromStorage();
+            initTabs();
+            initBatchMode();
+            initScenarioMode();
+            updatePositionInfo();
+        });
+
+        function loadStateFromStorage() {
+            try {
+                // 使用與主頁面相同的 localStorage key: 'hedge_positions'
+                const saved = localStorage.getItem('hedge_positions');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    simState.etfLots = data.etfLots || 0;
+                    simState.etfCost = data.etfCost || 100;
+                    simState.etfCurrentPrice = data.etfCurrentPrice || 100;
+                    simState.tseIndex = data.tseIndex || 23000;
+
+                    // Load ALL 3 strategies
+                    const ensureArray = d => !d ? [] : (Array.isArray(d) ? d : Object.values(d));
+
+                    // 策略 A 存在 optionPositions
+                    simState.strategies.A = ensureArray(data.optionPositions);
+
+                    // 策略 B 存在 strategyB.positions
+                    if (data.strategyB && data.strategyB.positions) {
+                        simState.strategies.B = ensureArray(data.strategyB.positions);
+                    }
+
+                    // 策略 C 存在 strategyC.positions
+                    if (data.strategyC && data.strategyC.positions) {
+                        simState.strategies.C = ensureArray(data.strategyC.positions);
+                    }
+
+                    // Load realized PnL
+                    if (data.realizedPnL) {
+                        simState.realizedPnL.A = data.realizedPnL.A || 0;
+                        simState.realizedPnL.B = data.realizedPnL.B || 0;
+                        simState.realizedPnL.C = data.realizedPnL.C || 0;
+                    }
+
+                    console.log('✅ 模擬頁載入策略:', {
+                        A: simState.strategies.A.length,
+                        B: simState.strategies.B.length,
+                        C: simState.strategies.C.length
+                    });
+                }
+                const dailyHistory = localStorage.getItem('simDailyHistory');
+                if (dailyHistory) simState.dailyHistory = JSON.parse(dailyHistory);
+            } catch (e) { console.error('Failed to load state:', e); }
+        }
+
+        function updatePositionInfo() {
+            document.getElementById('info-etf-lots').textContent = simState.etfLots.toFixed(2);
+            document.getElementById('info-current-index').textContent = simState.tseIndex.toLocaleString();
+            document.getElementById('info-a-count').textContent = simState.strategies.A.length + ' 口';
+            document.getElementById('info-b-count').textContent = simState.strategies.B.length + ' 口';
+            document.getElementById('info-c-count').textContent = simState.strategies.C.length + ' 口';
+            document.getElementById('info-a-realized').textContent = simState.realizedPnL.A.toLocaleString();
+            document.getElementById('info-b-realized').textContent = simState.realizedPnL.B.toLocaleString();
+            document.getElementById('info-c-realized').textContent = simState.realizedPnL.C.toLocaleString();
+            document.getElementById('batch-start-index').value = simState.tseIndex;
+        }
+
+        // ======== Tabs ========
+        function initTabs() {
+            document.querySelectorAll('.sim-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.sim-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.sim-panel').forEach(p => p.classList.remove('active'));
+                    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+                });
+            });
+        }
+
+        // ======== PnL Calculation for a specific strategy ========
+        function calculatePnLForStrategy(indexPrice, strategyKey) {
+            const baseIndex = simState.tseIndex;
+            const positions = simState.strategies[strategyKey] || [];
+            const realized = simState.realizedPnL[strategyKey] || 0;
+
+            // ETF PnL (shared across all strategies)
+            let etfPnL = 0;
+            if (simState.etfLots > 0 && baseIndex > 0) {
+                const ratio = indexPrice / baseIndex;
+                const newETFPrice = simState.etfCurrentPrice * Math.pow(ratio, 2);
+                etfPnL = (newETFPrice - simState.etfCurrentPrice) * simState.etfLots * 1000;
+            }
+
+            // Option PnL
+            let optPnL = 0;
+            positions.forEach(pos => {
+                if (pos.isClosed) return;
+                const multiplier = (pos.product === '微台' || pos.product === '微台期貨') ? 10 : 50;
+                if (pos.type === 'Futures' || pos.product === '微台期貨') {
+                    optPnL += (pos.direction === '賣出' ? (pos.strike - indexPrice) : (indexPrice - pos.strike)) * pos.lots * 10;
+                } else {
+                    let intrinsic = pos.type === 'Call' ? Math.max(0, indexPrice - pos.strike) : Math.max(0, pos.strike - indexPrice);
+                    optPnL += (pos.direction === '買進' ? (intrinsic - pos.premium) : (pos.premium - intrinsic)) * pos.lots * multiplier;
+                }
+            });
+            optPnL += realized;
+
+            return { etfPnL: Math.round(etfPnL), optPnL: Math.round(optPnL), totalPnL: Math.round(etfPnL + optPnL) };
+        }
+
+        function calculateAllStrategies(indexPrice) {
+            const a = calculatePnLForStrategy(indexPrice, 'A');
+            const b = calculatePnLForStrategy(indexPrice, 'B');
+            const c = calculatePnLForStrategy(indexPrice, 'C');
+            return { etfPnL: a.etfPnL, A: a, B: b, C: c };
+        }
+
+
+
+        // ======== Batch Mode ========
+        function initBatchMode() {
+            document.getElementById('btn-run-batch').addEventListener('click', runBatch);
+
+            // 當波動模式改變時，控制各輸入框
+            document.getElementById('batch-volatility-mode').addEventListener('change', function () {
+                const mcRunsGroup = document.getElementById('mc-runs-group');
+                const dailyChangeInput = document.getElementById('batch-daily-change');
+                const dailyChangeLabel = document.getElementById('daily-change-label');
+                const dailyChangeHint = document.getElementById('daily-change-hint');
+
+                // 蒙地卡羅模擬次數
+                if (this.value === 'monte-carlo') {
+                    mcRunsGroup.style.display = 'flex';
+                } else {
+                    mcRunsGroup.style.display = 'none';
+                    document.getElementById('mc-stats').style.display = 'none';
+                }
+
+                // 根據模式設定每日漲跌輸入框狀態和說明
+                const modeSettings = {
+                    'fixed': { enabled: true, label: '每日漲跌 (點)', hint: '' },
+                    'random': { enabled: true, label: '波動範圍 (±點)', hint: '實際波動在 ±此值 之間' },
+                    'random-large': { enabled: true, label: '波動範圍 (±點)', hint: '實際波動在 ±2倍此值 之間' },
+                    'trend': { enabled: true, label: '基準漲跌 (點)', hint: '每天增加 10%' },
+                    'trend-down': { enabled: true, label: '基準漲跌 (點)', hint: '每天減少 10%' },
+                    'v-shape': { enabled: true, label: '每日變動 (點)', hint: '先跌後漲' },
+                    'inverse-v': { enabled: true, label: '每日變動 (點)', hint: '先漲後跌' },
+                    'sideways': { enabled: true, label: '震盪幅度 (點)', hint: '在此範圍內來回震盪' },
+                    'monte-carlo': { enabled: true, label: '每日標準差 (點)', hint: '常態分布的標準差' }
+                };
+
+                const setting = modeSettings[this.value] || modeSettings['fixed'];
+                dailyChangeInput.disabled = !setting.enabled;
+                dailyChangeInput.style.opacity = setting.enabled ? '1' : '0.5';
+                dailyChangeLabel.textContent = setting.label;
+                dailyChangeHint.textContent = setting.hint;
+            });
+
+            // 天數設定方式切換
+            document.getElementById('batch-days-mode').addEventListener('change', function () {
+                const daysGroup = document.getElementById('batch-days-group');
+                const settlementGroup = document.getElementById('settlement-date-group');
+                if (this.value === 'settlement') {
+                    daysGroup.style.display = 'none';
+                    settlementGroup.style.display = 'flex';
+                    // 預設結算日為下一個每月第三個星期三
+                    if (!document.getElementById('settlement-date').value) {
+                        document.getElementById('settlement-date').value = getNextSettlementDate();
+                    }
+                    updateDaysRemaining();
+                } else {
+                    daysGroup.style.display = 'flex';
+                    settlementGroup.style.display = 'none';
+                }
+            });
+
+            // 結算日改變時更新剩餘天數
+            document.getElementById('settlement-date').addEventListener('change', updateDaysRemaining);
+        }
+
+        // 計算下一個結算日（每月第三個星期三）
+        function getNextSettlementDate() {
+            const today = new Date();
+            let year = today.getFullYear();
+            let month = today.getMonth();
+
+            // 計算這個月的第三個星期三
+            let settlement = getThirdWednesday(year, month);
+
+            // 如果已經過了這個月的結算日，取下個月
+            if (today > settlement) {
+                month++;
+                if (month > 11) { month = 0; year++; }
+                settlement = getThirdWednesday(year, month);
+            }
+
+            return settlement.toISOString().split('T')[0];
+        }
+
+        function getThirdWednesday(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const dayOfWeek = firstDay.getDay();
+            // 計算第一個星期三是幾號
+            const firstWed = 1 + ((3 - dayOfWeek + 7) % 7);
+            // 第三個星期三 = 第一個 + 14
+            return new Date(year, month, firstWed + 14);
+        }
+
+        function updateDaysRemaining() {
+            const settlementInput = document.getElementById('settlement-date');
+            const daysRemainingEl = document.getElementById('days-remaining');
+            if (settlementInput.value) {
+                const settlement = new Date(settlementInput.value);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const diffTime = settlement - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                daysRemainingEl.textContent = `距結算日: ${diffDays} 天`;
+                // 同步更新 batch-days 值
+                document.getElementById('batch-days').value = Math.max(1, diffDays);
+            }
+        }
+
+        function runBatch() {
+            // 根據模式決定天數
+            const daysMode = document.getElementById('batch-days-mode').value;
+            let days;
+            if (daysMode === 'settlement') {
+                const settlement = new Date(document.getElementById('settlement-date').value);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                days = Math.ceil((settlement - today) / (1000 * 60 * 60 * 24));
+                days = Math.max(1, days);
+            } else {
+                days = parseInt(document.getElementById('batch-days').value) || 10;
+            }
+
+            const startIndex = parseFloat(document.getElementById('batch-start-index').value) || simState.tseIndex;
+            const dailyChange = parseFloat(document.getElementById('batch-daily-change').value) || 0;
+            const mode = document.getElementById('batch-volatility-mode').value;
+            const midPoint = Math.floor(days / 2);
+
+            // 蒙地卡羅用的常態分布隨機函數 (Box-Muller)
+            function gaussianRandom(mean = 0, stdev = 1) {
+                const u = 1 - Math.random();
+                const v = Math.random();
+                const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+                return z * stdev + mean;
+            }
+
+            // 計算單次模擬的變動
+            function getChange(mode, dayIndex, dailyChange) {
+                switch (mode) {
+                    case 'fixed': return dailyChange;
+                    case 'random': return (Math.random() - 0.5) * 2 * Math.abs(dailyChange);
+                    case 'random-large': return (Math.random() - 0.5) * 4 * Math.abs(dailyChange);
+                    case 'trend': return dailyChange * (1 + dayIndex * 0.1);
+                    case 'trend-down': return dailyChange * Math.max(0.1, 1 - dayIndex * 0.1);
+                    case 'v-shape': return dayIndex < midPoint ? -Math.abs(dailyChange) : Math.abs(dailyChange) * 1.2;
+                    case 'inverse-v': return dayIndex < midPoint ? Math.abs(dailyChange) : -Math.abs(dailyChange) * 1.2;
+                    case 'sideways': return (Math.sin(dayIndex * 0.8) * 0.3 + (Math.random() - 0.5) * 0.2) * Math.abs(dailyChange);
+                    case 'monte-carlo': return gaussianRandom(0, Math.abs(dailyChange));
+                    default: return dailyChange;
+                }
+            }
+
+            // ========== 蒙地卡羅多次模擬 ==========
+            if (mode === 'monte-carlo') {
+                const runs = parseInt(document.getElementById('mc-runs').value) || 100;
+                const allResults = { A: [], B: [], C: [] };
+
+                for (let run = 0; run < runs; run++) {
+                    let currentIndex = startIndex;
+                    for (let i = 0; i <= days; i++) {
+                        currentIndex += getChange(mode, i, dailyChange);
+                    }
+                    // 計算最終日的損益
+                    const finalPnl = calculateAllStrategies(currentIndex);
+                    allResults.A.push(finalPnl.A.totalPnL);
+                    allResults.B.push(finalPnl.B.totalPnL);
+                    allResults.C.push(finalPnl.C.totalPnL);
+                }
+
+                // 計算統計數據
+                const calcStats = (arr) => ({
+                    avg: Math.round(arr.reduce((a, b) => a + b, 0) / arr.length),
+                    winRate: Math.round((arr.filter(x => x >= 0).length / arr.length) * 100),
+                    max: Math.max(...arr),
+                    min: Math.min(...arr)
+                });
+
+                const statsA = calcStats(allResults.A);
+                const statsB = calcStats(allResults.B);
+                const statsC = calcStats(allResults.C);
+
+                // 顯示統計結果
+                document.getElementById('mc-stats').style.display = 'grid';
+                document.getElementById('mc-total-runs').textContent = runs;
+                document.getElementById('mc-avg-a').textContent = (statsA.avg >= 0 ? '+' : '') + statsA.avg.toLocaleString();
+                document.getElementById('mc-avg-a').className = 'value ' + (statsA.avg >= 0 ? 'profit' : 'loss');
+                document.getElementById('mc-avg-b').textContent = (statsB.avg >= 0 ? '+' : '') + statsB.avg.toLocaleString();
+                document.getElementById('mc-avg-b').className = 'value ' + (statsB.avg >= 0 ? 'profit' : 'loss');
+                document.getElementById('mc-avg-c').textContent = (statsC.avg >= 0 ? '+' : '') + statsC.avg.toLocaleString();
+                document.getElementById('mc-avg-c').className = 'value ' + (statsC.avg >= 0 ? 'profit' : 'loss');
+                document.getElementById('mc-winrate-a').textContent = statsA.winRate + '%';
+                document.getElementById('mc-winrate-b').textContent = statsB.winRate + '%';
+                document.getElementById('mc-winrate-c').textContent = statsC.winRate + '%';
+                document.getElementById('mc-maxloss-a').textContent = statsA.min.toLocaleString();
+                document.getElementById('mc-maxloss-b').textContent = statsB.min.toLocaleString();
+                document.getElementById('mc-maxloss-c').textContent = statsC.min.toLocaleString();
+                document.getElementById('mc-maxprofit-a').textContent = '+' + statsA.max.toLocaleString();
+                document.getElementById('mc-maxprofit-b').textContent = '+' + statsB.max.toLocaleString();
+                document.getElementById('mc-maxprofit-c').textContent = '+' + statsC.max.toLocaleString();
+
+                // 顯示一個代表性的單次模擬結果
+            }
+
+            // ========== 一般模式（單次模擬）==========
+            const results = [];
+            let currentIndex = startIndex;
+
+            for (let i = 0; i <= days; i++) {
+                const pnl = calculateAllStrategies(currentIndex);
+                results.push({ day: i, index: currentIndex, cumChange: currentIndex - startIndex, ...pnl });
+                currentIndex += getChange(mode, i, dailyChange);
+            }
+
+            // Render table
+            document.getElementById('batch-result-body').innerHTML = results.map(r => `
+                <tr>
+                    <td>第 ${r.day} 天</td>
+                    <td>${Math.round(r.index).toLocaleString()}</td>
+                    <td class="${r.cumChange >= 0 ? 'profit' : 'loss'}">${r.cumChange >= 0 ? '+' : ''}${Math.round(r.cumChange)}</td>
+                    <td class="${r.etfPnL >= 0 ? 'profit' : 'loss'}">${r.etfPnL >= 0 ? '+' : ''}${r.etfPnL.toLocaleString()}</td>
+                    <td class="col-a ${r.A.optPnL >= 0 ? 'profit' : 'loss'}">${r.A.optPnL >= 0 ? '+' : ''}${r.A.optPnL.toLocaleString()}</td>
+                    <td class="col-b ${r.B.optPnL >= 0 ? 'profit' : 'loss'}">${r.B.optPnL >= 0 ? '+' : ''}${r.B.optPnL.toLocaleString()}</td>
+                    <td class="col-c ${r.C.optPnL >= 0 ? 'profit' : 'loss'}">${r.C.optPnL >= 0 ? '+' : ''}${r.C.optPnL.toLocaleString()}</td>
+                    <td class="col-a ${r.A.totalPnL >= 0 ? 'profit' : 'loss'}" style="font-weight:700">${r.A.totalPnL >= 0 ? '+' : ''}${r.A.totalPnL.toLocaleString()}</td>
+                    <td class="col-b ${r.B.totalPnL >= 0 ? 'profit' : 'loss'}" style="font-weight:700">${r.B.totalPnL >= 0 ? '+' : ''}${r.B.totalPnL.toLocaleString()}</td>
+                    <td class="col-c ${r.C.totalPnL >= 0 ? 'profit' : 'loss'}" style="font-weight:700">${r.C.totalPnL >= 0 ? '+' : ''}${r.C.totalPnL.toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            // Render chart
+            renderBatchChart(results);
+        }
+
+        function renderBatchChart(results) {
+            const ctx = document.getElementById('batch-chart').getContext('2d');
+            if (simState.batchChart) simState.batchChart.destroy();
+            simState.batchChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: results.map(r => `D${r.day}`),
+                    datasets: [
+                        { label: '🔴 策略A 總損益', data: results.map(r => r.A.totalPnL), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: false, tension: 0.3 },
+                        { label: '🔵 策略B 總損益', data: results.map(r => r.B.totalPnL), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: false, tension: 0.3 },
+                        { label: '🟢 策略C 總損益', data: results.map(r => r.C.totalPnL), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: false, tension: 0.3 },
+                        { label: 'ETF 損益', data: results.map(r => r.etfPnL), borderColor: '#f59e0b', borderDash: [5, 5], fill: false, tension: 0.3 }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => v.toLocaleString() } } } }
+            });
+        }
+
+        // ======== Scenario Mode ========
+        function initScenarioMode() {
+            // 點擊卡片時高亮顯示
+            document.querySelectorAll('.scenario-card').forEach(card => {
+                card.addEventListener('click', function () {
+                    document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+
+            // 初始化起始指數
+            document.getElementById('scenario-start-index').value = simState.tseIndex;
+        }
+
+        function runScenario(scenarioType) {
+            const days = parseInt(document.getElementById('scenario-days').value) || 3;
+            const startIndex = parseFloat(document.getElementById('scenario-start-index').value) || simState.tseIndex;
+
+            // 根據情境類型產生每日變動
+            const changes = generateScenarioChanges(scenarioType, days);
+            const results = [];
+            let currentIndex = startIndex;
+
+            // 第 0 天
+            const pnl0 = calculateAllStrategies(currentIndex);
+            results.push({ day: 0, index: currentIndex, cumChange: 0, ...pnl0 });
+
+            // 各天變動
+            changes.forEach((change, i) => {
+                currentIndex += change;
+                const pnl = calculateAllStrategies(currentIndex);
+                results.push({ day: i + 1, index: currentIndex, cumChange: currentIndex - startIndex, ...pnl });
+            });
+
+            // 顯示表格
+            document.getElementById('scenario-result-body').innerHTML = results.map(r => `
+                <tr>
+                    <td>第 ${r.day} 天</td>
+                    <td>${Math.round(r.index).toLocaleString()}</td>
+                    <td class="${r.cumChange >= 0 ? 'profit' : 'loss'}">${r.cumChange >= 0 ? '+' : ''}${Math.round(r.cumChange)}</td>
+                    <td class="${r.etfPnL >= 0 ? 'profit' : 'loss'}">${r.etfPnL >= 0 ? '+' : ''}${r.etfPnL.toLocaleString()}</td>
+                    <td class="col-a ${r.A.optPnL >= 0 ? 'profit' : 'loss'}">${r.A.optPnL >= 0 ? '+' : ''}${r.A.optPnL.toLocaleString()}</td>
+                    <td class="col-b ${r.B.optPnL >= 0 ? 'profit' : 'loss'}">${r.B.optPnL >= 0 ? '+' : ''}${r.B.optPnL.toLocaleString()}</td>
+                    <td class="col-c ${r.C.optPnL >= 0 ? 'profit' : 'loss'}">${r.C.optPnL >= 0 ? '+' : ''}${r.C.optPnL.toLocaleString()}</td>
+                    <td class="col-a ${r.A.totalPnL >= 0 ? 'profit' : 'loss'}" style="font-weight:700">${r.A.totalPnL >= 0 ? '+' : ''}${r.A.totalPnL.toLocaleString()}</td>
+                    <td class="col-b ${r.B.totalPnL >= 0 ? 'profit' : 'loss'}" style="font-weight:700">${r.B.totalPnL >= 0 ? '+' : ''}${r.B.totalPnL.toLocaleString()}</td>
+                    <td class="col-c ${r.C.totalPnL >= 0 ? 'profit' : 'loss'}" style="font-weight:700">${r.C.totalPnL >= 0 ? '+' : ''}${r.C.totalPnL.toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            // 顯示圖表
+            document.getElementById('scenario-chart-container').style.display = 'block';
+            renderScenarioChart(results);
+        }
+
+        function generateScenarioChanges(type, days) {
+            const midPoint = Math.floor(days / 2);
+            switch (type) {
+                case 'crash': return Array(days).fill(-300);
+                case 'rally': return Array(days).fill(300);
+                case 'moderate-drop': return Array(days).fill(-100);
+                case 'moderate-rise': return Array(days).fill(100);
+                case 'v-shape':
+                    return Array(days).fill(0).map((_, i) => i < midPoint ? -200 : 250);
+                case 'inverse-v':
+                    return Array(days).fill(0).map((_, i) => i < midPoint ? 200 : -250);
+                case 'sideways':
+                    return Array(days).fill(0).map((_, i) => (Math.sin(i * 1.2) * 150));
+                case 'black-swan':
+                    return [-1000, ...Array(days - 1).fill(0).map((_, i) => 80 + i * 10)];
+                default: return Array(days).fill(0);
+            }
+        }
+
+        function renderScenarioChart(results) {
+            const ctx = document.getElementById('scenario-chart').getContext('2d');
+            if (simState.scenarioChart) simState.scenarioChart.destroy();
+            simState.scenarioChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: results.map(r => `D${r.day}`),
+                    datasets: [
+                        { label: '🔴 策略A', data: results.map(r => r.A.totalPnL), borderColor: '#ef4444', fill: false, tension: 0.3 },
+                        { label: '🔵 策略B', data: results.map(r => r.B.totalPnL), borderColor: '#3b82f6', fill: false, tension: 0.3 },
+                        { label: '🟢 策略C', data: results.map(r => r.C.totalPnL), borderColor: '#22c55e', fill: false, tension: 0.3 },
+                        { label: '指數', data: results.map(r => r.index), borderColor: '#f59e0b', yAxisID: 'y1', borderDash: [5, 5], fill: false }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        y: { type: 'linear', position: 'left', ticks: { callback: v => v.toLocaleString() } },
+                        y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

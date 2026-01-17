@@ -18,8 +18,9 @@
     <script
         src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=1.1.42">
-    <link rel="stylesheet" href="css/sensitivity.css?v=1.1.42">
+    <link rel="stylesheet" href="css/style.css?v=1.1.45">
+    <link rel="stylesheet" href="css/sensitivity.css?v=1.1.45">
+    <link rel="stylesheet" href="css/simulation.css?v=1.1.45">
 </head>
 
 <body>
@@ -107,6 +108,12 @@
                         <span>帳戶損益:</span>
                         <span id="account-pnl-value">0 元</span>
                     </div>
+                </div>
+
+                <!-- Simulation Toggle -->
+                <div class="sidebar-section">
+                    <a href="simulation.html" class="btn btn-primary btn-full"
+                        style="text-decoration: none; text-align: center;">🧪 開啟模擬分析中心</a>
                 </div>
 
                 <!-- Simulation Settings -->
@@ -305,22 +312,6 @@
                         </div>
                     </div>
                     <button class="btn btn-primary btn-full" id="btn-add-option">新增選擇權倉位</button>
-
-                    <!-- Data Source Switcher -->
-                    <div class="source-switcher mt-4">
-                        <span class="source-label">📡 資料來源:</span>
-                        <div class="source-buttons">
-                            <button class="source-btn active" data-source="taifex" title="期交所收盤資料">期交所</button>
-                            <button class="source-btn" data-source="mock" title="模擬資料">模擬</button>
-                            <button class="source-btn" data-source="fubon" title="富邦即時報價 (需設定憑證)"
-                                data-offline-hint="交易時間 09:30-19:00" disabled>富邦</button>
-                            <button class="source-btn" data-source="yahoo" title="Yahoo 奇摩 (備援)">Yahoo</button>
-                        </div>
-                        <span class="source-status" id="source-status">載入中...</span>
-                    </div>
-
-                    <!-- Strike Picker -->
-                    <div id="strike-picker-grid" class="mt-4"></div>
                 </div>
 
                 <!-- Futures Form -->
@@ -456,6 +447,91 @@
 
             <!-- AI Inventory Parser Removed -->
 
+            <!-- Simulation Section -->
+            <section class="card" id="simulation-card" style="display: none;">
+                <h2 class="section-title">🧪 模擬實驗室 (Simulation)</h2>
+
+                <div class="simulation-controls">
+                    <!-- Control Grid -->
+                    <div class="sim-control-grid">
+                        <!-- Index Change -->
+                        <div class="sim-control-item">
+                            <label>指數變動 (Points)</label>
+                            <div class="range-with-input">
+                                <input type="range" id="sim-index-change-slider" min="-2000" max="2000" step="10"
+                                    value="0">
+                                <input type="number" id="sim-index-change-input" value="0" step="10">
+                            </div>
+                            <div class="sim-value-display">
+                                模擬指數: <span id="sim-projected-index">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Days Passing -->
+                        <div class="sim-control-item">
+                            <label>經過天數 (Days)</label>
+                            <div class="range-with-input">
+                                <input type="range" id="sim-days-slider" min="0" max="30" step="1" value="1">
+                                <input type="number" id="sim-days-input" value="1" min="0" max="180">
+                            </div>
+                            <div class="sim-value-display">
+                                剩餘天數推估: <span id="sim-remaining-days">--</span> (假設剩餘 <input type="number"
+                                    id="sim-initial-days" value="15" style="width: 50px; padding: 2px;"> 天)
+                            </div>
+                        </div>
+
+                        <!-- Volatility Change -->
+                        <div class="sim-control-item">
+                            <label>波動率變動 (Vol %)</label>
+                            <div class="range-with-input">
+                                <input type="range" id="sim-vol-change-slider" min="-10" max="10" step="1" value="0">
+                                <input type="number" id="sim-vol-change-input" value="0" step="1">
+                            </div>
+                            <div class="sim-value-display">
+                                假設 IV: <span id="sim-projected-vol">20%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="sim-actions mt-3">
+                        <button class="btn btn-secondary btn-sm" id="btn-reset-sim">↺ 重置參數</button>
+                    </div>
+                </div>
+
+                <!-- Results Display -->
+                <div class="sim-results mt-4">
+                    <div class="sim-result-grid">
+                        <!-- Total PnL -->
+                        <div class="sim-result-card total">
+                            <div class="label">預估總損益</div>
+                            <div class="value" id="sim-total-pnl">--</div>
+                            <div class="sub-value" id="sim-total-pnl-change">--</div>
+                        </div>
+
+                        <!-- ETF PnL -->
+                        <div class="sim-result-card">
+                            <div class="label">ETF 損益</div>
+                            <div class="value" id="sim-etf-pnl">--</div>
+                            <div class="diff" id="sim-etf-diff">--</div>
+                        </div>
+
+                        <!-- Option PnL -->
+                        <div class="sim-result-card">
+                            <div class="label">期權損益</div>
+                            <div class="value" id="sim-opt-pnl">--</div>
+                            <div class="diff" id="sim-opt-diff">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Greeks (Optional, maybe later) -->
+                    <div class="sim-details mt-3" style="font-size: 0.9em; color: var(--text-secondary);">
+                        * 模擬採用 Black-Scholes 模型估算，僅供參考。<br>
+                        * 微台期貨以 Delta=1 計算，不計時間價值。
+                    </div>
+                </div>
+            </section>
+
             <!-- Sensitivity Analysis Card -->
             <section class="card" id="sensitivity-card">
                 <h2 class="section-title">📊 損益敏感度分析 (±100點)</h2>
@@ -566,7 +642,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>💡 選擇權乘數: 50 元/點 | 00631L 槓桿: 2x | <span id="app-version">v1.1.42</span></p>
+        <p>💡 選擇權乘數: 50 元/點 | 00631L 槓桿: 2x | <span id="app-version">v1.1.45</span></p>
         <p><span id="save-status">--</span></p>
     </footer>
 
@@ -584,10 +660,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="js/calculator.js?v=1.1.42"></script>
-    <script src="js/chart.js?v=1.1.42"></script>
-    <script src="js/firebase.js?v=1.1.42"></script>
-    <script src="js/app.js?v=1.1.42"></script>
+    <script src="js/calculator.js?v=1.1.45"></script>
+    <script src="js/chart.js?v=1.1.45"></script>
+    <script src="js/firebase.js?v=1.1.45"></script>
+    <script src="js/simulation.js?v=1.1.45"></script>
+    <script src="js/app.js?v=1.1.45"></script>
 </body>
 
 </html>
