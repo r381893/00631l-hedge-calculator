@@ -135,6 +135,18 @@
                     </div>
                 </div>
 
+                <!-- Data Management -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">💾 資料管理</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary btn-full" id="btn-export">📤 匯出備份 (JSON)</button>
+                        <button class="btn btn-secondary btn-full mt-1" id="btn-import">📥 匯入還原</button>
+                    </div>
+                    <!-- Hidden File Input -->
+                    <input type="file" id="import-file" style="display: none;" accept=".json">
+                    <button class="btn btn-danger btn-full mt-2" id="btn-clear">🧹 清空所有資料</button>
+                </div>
+
                 <!-- Firebase Settings -->
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">🔥 Firebase</h3>
@@ -186,6 +198,79 @@
 
         <!-- Main Content -->
         <main class="main-content">
+
+            <!-- Key Risk Indicators -->
+            <section class="card" id="risk-indicators-card">
+                <h2 class="section-title">📊 關鍵風險指標</h2>
+                <div class="risk-indicators-grid">
+                    <!-- Breakeven -->
+                    <div class="risk-card">
+                        <div class="risk-icon">📍</div>
+                        <div class="risk-content">
+                            <div class="risk-label">損益兩平點</div>
+                            <div class="risk-value" id="risk-breakeven">無</div>
+                            <div class="risk-sub">指數到達此點位時損益為零</div>
+                        </div>
+                    </div>
+                    <!-- Max Loss -->
+                    <div class="risk-card danger-border">
+                        <div class="risk-icon">⚠️</div>
+                        <div class="risk-content">
+                            <div class="risk-label">範圍內最差情況</div>
+                            <div class="risk-value danger-text" id="risk-max-loss">--</div>
+                            <div class="risk-sub" id="risk-max-loss-at">@ -- 點</div>
+                        </div>
+                    </div>
+                    <!-- Hedge Coverage -->
+                    <div class="risk-card info-border">
+                        <div class="risk-icon">🛡️</div>
+                        <div class="risk-content">
+                            <div class="risk-label">避險覆蓋率</div>
+                            <div class="risk-value info-text" id="risk-hedge-ratio">--%</div>
+                            <div class="risk-sub">|策略Δ| ÷ |ETF Δ| × 100%</div>
+                        </div>
+                    </div>
+                    <!-- PnL at -500 -->
+                    <div class="risk-card">
+                        <div class="risk-icon">📉</div>
+                        <div class="risk-content">
+                            <div class="risk-label">跌500點時損益</div>
+                            <div class="risk-value" id="risk-pnl-drop-500">--</div>
+                            <div class="risk-sub" id="risk-pnl-drop-1000">-1000點: --</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Greeks Exposure -->
+            <section class="card" id="greeks-card">
+                <h2 class="section-title">🔢 Greeks 風險曝險</h2>
+                <div class="greeks-grid">
+                    <div class="greek-box">
+                        <div class="greek-label">🔺 Delta</div>
+                        <div class="greek-value delta-value" id="greek-delta">--</div>
+                        <div class="greek-desc">每100點漲跌的損益變化</div>
+                    </div>
+                    <div class="greek-box">
+                        <div class="greek-label">Θ Theta</div>
+                        <div class="greek-value theta-value" id="greek-theta">-- /日</div>
+                        <div class="greek-desc">每日損益 (元)</div>
+                    </div>
+                    <div class="greek-box">
+                        <div class="greek-label">💲 淨權利金</div>
+                        <div class="greek-value money-value" id="greek-net-premium">--</div>
+                        <div class="greek-desc">收入 - 支出 = 淨收支</div>
+                    </div>
+                    <div class="greek-box">
+                        <div class="greek-label">💰 當前總損益</div>
+                        <div class="greek-value total-pnl-value" id="greek-total-pnl">--</div>
+                        <div class="greek-desc">ETF損益 + 策略損益</div>
+                    </div>
+                </div>
+                <div class="mt-3" style="font-size: 0.85em; color: var(--text-muted);">
+                    💡 單位說明：所有數值皆為元(NTD) | Delta +正=看多避險、負=看空避險 | Theta +正=賣方每日收益、負=買方每日損耗 | 滑鼠移到卡片上查看詳細計算說明
+                </div>
+            </section>
             <!-- Copy Strategy Card -->
             <section class="card" id="copy-strategy-card">
                 <h2 class="section-title">📥 複製策略</h2>
@@ -239,14 +324,22 @@
 
             <!-- AI Assistant Card -->
             <section class="card" id="ai-assistant-card">
-                <h2 class="section-title">🤖 AI 策略助手</h2>
-                <div class="ai-controls">
-                    <button class="btn btn-ai-analysis btn-full" id="btn-ai-analysis">
-                        🧠 執行 AI 策略診斷 (Gemini)
-                    </button>
-                    <div id="ai-loading" style="display: none; margin-top: 10px; text-align: center;">
-                        <span class="loading-spinner"></span> 正在分析中...
-                    </div>
+                <h2 class="section-title">🤖 AI 助手</h2>
+
+                <div class="ai-features-grid">
+                    <button class="btn btn-ai-feature" data-action="risk_alert">⚠️ 風險預警</button>
+                    <button class="btn btn-ai-feature" data-action="strategy_recommend">🎯 策略推薦</button>
+                    <button class="btn btn-ai-feature" data-action="position_analysis">📊 倉位分析</button>
+                    <button class="btn btn-ai-feature" data-action="scenario_analysis">🔮 假如分析</button>
+                </div>
+
+                <div class="ai-chat-input-area mt-3">
+                    <input type="text" id="ai-user-query" class="ai-input" placeholder="問任何選擇權相關問題，例如：什麼是 Iron Condor？">
+                    <button class="btn btn-primary" id="btn-send-ai">發送 💬</button>
+                </div>
+
+                <div id="ai-loading" style="display: none; margin-top: 10px; text-align: center;">
+                    <span class="loading-spinner"></span> 正在分析中...
                 </div>
 
                 <!-- AI Analysis Result -->
@@ -270,6 +363,50 @@
 
                 <!-- Option Form -->
                 <div id="option-form" class="position-form">
+
+                    <!-- Source Switcher -->
+                    <div class="source-switcher-container mb-3"
+                        style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
+                        <div class="source-buttons">
+                            <span class="switcher-label"
+                                style="margin-right: 8px; font-size: 0.9em; color: var(--text-secondary);">報價來源:</span>
+                            <div class="btn-group" style="display: inline-flex; gap: 4px;">
+                                <button class="btn btn-sm btn-outline source-btn active"
+                                    data-source="taifex">期交所</button>
+                                <button class="btn btn-sm btn-outline source-btn" data-source="fubon" disabled>富邦
+                                    API</button>
+                                <button class="btn btn-sm btn-outline source-btn" data-source="yahoo"
+                                    disabled>Yahoo</button>
+                                <button class="btn btn-sm btn-outline source-btn" data-source="mock">模擬</button>
+                            </div>
+                        </div>
+                        <span id="source-status" class="source-status"
+                            style="font-size: 0.85em; padding: 2px 6px; border-radius: 4px;">準備就緒</span>
+                    </div>
+
+                    <!-- Contract Selector -->
+                    <div class="contract-selector mb-3"
+                        style="display: flex; gap: 8px; align-items: center; padding: 0 4px;">
+                        <label class="step-label" style="font-size: 0.9em; min-width: 60px;">合約:</label>
+                        <select id="contract-select" class="form-select modern-select"
+                            style="flex: 1; padding: 6px 10px; font-size: 0.9em;">
+                            <option value="current_month" selected>當月 (Monthly)</option>
+                            <option value="next_month">次月 (Next Month)</option>
+                            <option value="current_week">當週三 (Wed)</option>
+                            <option value="next_week">次週三 (Wed)</option>
+                            <option value="current_fri">當週五 (Fri)</option>
+                            <option value="next_fri">次週五 (Fri)</option>
+                        </select>
+                        <button id="btn-refresh-chain" class="btn btn-sm btn-secondary" title="刷新報價">🔄</button>
+                    </div>
+
+                    <!-- Strike Picker Grid (Option Chain) -->
+                    <div id="strike-picker-grid" class="strike-grid mb-3"
+                        style="min-height: 100px; max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 4px;">
+                        <!-- Will be populated by JS -->
+                    </div>
+
+
                     <div class="compact-form-grid">
                         <!-- Row 1 Items -->
                         <div class="form-group">
@@ -536,6 +673,7 @@
                 </div>
             </section>
 
+
             <!-- Risk Dashboard Card -->
             <section class="card" id="risk-dashboard-card">
                 <div class="section-header"
@@ -702,6 +840,7 @@
                 </div>
             </section>
 
+
             <!-- PnL Chart -->
             <section class="card" id="pnl-chart-section">
                 <h2 class="section-title">📈 損益曲線</h2>
@@ -762,8 +901,9 @@
         <span class="toast-message"></span>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/extra_style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <!-- Markdown Parser -->

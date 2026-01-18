@@ -453,6 +453,123 @@ function parseYahooOptionCSV(csvText) {
     return options;
 }
 
+// ======== Black-Scholes Implementations ========
+
+/**
+ * Normal Distribution Probability Density Function (PDF)
+ */
+function probabilityDensity(x) {
+    return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x);
+}
+
+/**
+ * Normal Distribution Cumulative Distribution Function (CDF)
+ */
+function cumulativeDistribution(x) {
+    var sign = 1.0;
+    if (x < 0) {
+        sign = -1.0;
+        x = -x;
+    }
+    x = 1.0 / (1.0 + 0.2316419 * x);
+    var y = 1.0 - probabilityDensity(x / sign) * (
+        0.319381530 * x +
+        -0.356563782 * x * x +
+        1.781477937 * x * x * x +
+        -1.821255978 * x * x * x * x +
+        1.330274429 * x * x * x * x * x
+    );
+    return sign < 0 ? 1.0 - y : y;
+}
+
+/**
+ * Calculate Option Theta using Black-Scholes Model
+ * @param {number} S - Current Underlying Price
+ * @param {number} K - Strike Price
+ * @param {number} T - Time to Expiration (in years)
+ * @param {number} r - Risk-free Interest Rate (annual, e.g., 0.01 for 1%)
+ * @param {number} sigma - Volatility (annual, e.g., 0.2 for 20%)
+ * @param {string} type - 'Call' or 'Put'
+ * @returns {number} Daily Theta (Price change per day)
+ */
+function calculateBSTheta(S, K, T, r, sigma, type) {
+    if (T <= 0) return 0;
+
+    // Validate inputs to prevent NaN
+    if (S <= 0 || K <= 0 || sigma < 0) return 0;
+
+    const sqrtT = Math.sqrt(T);
+    const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * sqrtT);
+    const d2 = d1 - sigma * sqrtT;
+
+    const pdfD1 = probabilityDensity(d1);
+    const cdfD2 = cumulativeDistribution(d2);
+    const cdfNegD2 = cumulativeDistribution(-d2);
+
+    let thetaAnnual = 0;
+
+    // First term common to both
+    const term1 = -(S * pdfD1 * sigma) / (2 * sqrtT);
+
+    if (type === 'Call') {
+        const term2 = r * K * Math.exp(-r * T) * cdfD2;
+        thetaAnnual = term1 - term2;
+    } else { // Put
+        const term2 = r * K * Math.exp(-r * T) * cdfNegD2;
+        thetaAnnual = term1 + term2;
+    }
+
+    // Convert to Daily Theta (divide by 365)
+    return thetaAnnual / 365;
+}
+
+/**
+ * Calculate Portfolio Theta
+ * @param {Array} positions - List of option positions
+ * @param {number} indexPrice - Current Index Price
+ * @param {number} daysToExpiry - Days remaining until expiration
+ * @param {number} volatility - Annual Volatility (e.g., 0.20 for 20%), default 20%
+ * @param {number} riskFreeRate - Annual Risk-Free Rate, default 1.5%
+ * @returns {number} Total Portfolio Theta (Daily PnL Decay)
+ */
+function calculatePortfolioTheta(positions, indexPrice, daysToExpiry, volatility = 0.2, riskFreeRate = 0.015) {
+    if (!positions || positions.length === 0) return 0;
+
+    // Convert days to years
+    const T = Math.max(daysToExpiry, 0.5) / 365; // Avoid T=0, use 0.5 day as min
+
+    let totalThetaPnL = 0;
+
+    for (const pos of positions) {
+        // Skip ETF or closed positions
+        if (pos.product !== '台指' && pos.product !== '微台' && pos.type !== 'Call' && pos.type !== 'Put') continue;
+        if (pos.isClosed || pos.lots <= 0) continue;
+
+        const isMicro = pos.product === '微台';
+        const multiplier = isMicro ? CONSTANTS.MICRO_OPTION_MULTIPLIER : CONSTANTS.OPTION_MULTIPLIER;
+        const type = pos.type; // 'Call' or 'Put'
+        const strike = parseFloat(pos.strike);
+
+        // Calculate Unit Theta (Price change per day)
+        const unitTheta = calculateBSTheta(indexPrice, strike, T, riskFreeRate, volatility, type);
+
+        // Theta PnL = Unit Theta * Multiplier * Lots * Direction
+        // If Buy (Long): Theta is negative (you lose value). Direction 1.
+        // If Sell (Short): Theta is positive (you gain value). Direction -1.
+        // However, BS Theta is typically negative for Long positions.
+        // My BS formula returns the negative number.
+        // So Long: (-Theta) * Lots * Mult.
+        // Short: -(-Theta) * Lots * Mult = Positive.
+
+        const directionMult = pos.direction === '買進' ? 1 : -1;
+        const thetaValue = unitTheta * multiplier * pos.lots * directionMult;
+
+        totalThetaPnL += thetaValue;
+    }
+
+    return totalThetaPnL;
+}
+
 // 匯出模組
 window.Calculator = {
     CONSTANTS,
@@ -465,5 +582,6 @@ window.Calculator = {
     compareStrategies,
     findBreakeven,
     recommendStrategies,
-    parseYahooOptionCSV
+    parseYahooOptionCSV,
+    calculatePortfolioTheta // New function
 };

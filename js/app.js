@@ -146,6 +146,28 @@ function cacheElements() {
     elements.futuresLots = document.getElementById('futures-lots');
     elements.btnAddFutures = document.getElementById('btn-add-futures');
 
+    // Risk Indicators
+    elements.riskBreakeven = document.getElementById('risk-breakeven');
+    elements.riskMaxLoss = document.getElementById('risk-max-loss');
+    elements.riskMaxLossAt = document.getElementById('risk-max-loss-at');
+    elements.riskHedgeRatio = document.getElementById('risk-hedge-ratio');
+    elements.riskPnlDrop500 = document.getElementById('risk-pnl-drop-500');
+    elements.riskPnlDrop1000 = document.getElementById('risk-pnl-drop-1000');
+
+    // Greeks
+    elements.greekDelta = document.getElementById('greek-delta');
+    elements.greekTheta = document.getElementById('greek-theta');
+    elements.greekNetPremium = document.getElementById('greek-net-premium');
+    elements.greekTotalPnL = document.getElementById('greek-total-pnl');
+
+    // AI Features
+    elements.aiInput = document.getElementById('ai-user-query');
+    elements.btnSendAi = document.getElementById('btn-send-ai');
+    elements.aiResultCard = document.getElementById('ai-result-card');
+    elements.aiResultContent = document.getElementById('ai-result-content');
+    elements.btnCloseAi = document.getElementById('btn-close-ai');
+    elements.aiLoading = document.getElementById('ai-loading');
+
     // Strategy Controls
     elements.btnConfirmCopy = document.getElementById('btn-confirm-copy');
     elements.chkConfirmCopy = document.getElementById('chk-confirm-copy'); // Added
@@ -164,6 +186,7 @@ function cacheElements() {
     elements.inventoryText = document.getElementById('inventory-text');
 
     // Risk Dashboard Elements
+<<<<<<< HEAD
     state.riskElements = {
         // Key Risk Metrics
         breakeven: document.getElementById('risk-breakeven'),
@@ -179,6 +202,26 @@ function cacheElements() {
         netPremium: document.getElementById('greek-net-premium'),
         currentPnl: document.getElementById('greek-current-pnl')
     };
+=======
+    elements.riskBreakeven = document.getElementById('risk-breakeven');
+    elements.riskMaxLoss = document.getElementById('risk-max-loss');
+    elements.riskMaxLossAt = document.getElementById('risk-max-loss-at');
+    elements.riskHedgeRatio = document.getElementById('risk-hedge-ratio');
+    elements.riskPnl500Down = document.getElementById('risk-pnl-drop-500');
+    elements.riskPnl1000Down = document.getElementById('risk-pnl-drop-1000'); // Sub label
+
+    // Greeks Elements
+    elements.greekDelta = document.getElementById('greek-delta');
+    elements.greekTheta = document.getElementById('greek-theta');
+    elements.greekNetPremium = document.getElementById('greek-net-premium');
+    elements.greekTotalPnL = document.getElementById('greek-total-pnl');
+
+    // Contract Selection
+    elements.contractSelect = document.getElementById('contract-select');
+
+
+
+>>>>>>> fae9ee7 (feat: Implement Risk Dashboard, Theta Calc, and Weekly/Friday Options support)
     elements.btnParseInventory = document.getElementById('btn-parse-inventory');
     elements.btnClearInventory = document.getElementById('btn-clear-inventory');
     elements.parseResults = document.getElementById('parse-results');
@@ -290,7 +333,17 @@ function bindEvents() {
     // AI Analysis
     bindAIEvents();
 
+    // Data Management
+    elements.btnExport = document.getElementById('btn-export');
+    elements.btnImport = document.getElementById('btn-import');
+    elements.importFile = document.getElementById('import-file');
+
+    elements.btnExport?.addEventListener('click', handleExportData);
+    elements.btnImport?.addEventListener('click', () => elements.importFile?.click());
+    elements.importFile?.addEventListener('change', handleImportData);
+
     // Source Switcher (資料來源切換)
+
     bindSourceSwitcherEvents();
 
     // Risk Dashboard Strategy Selector
@@ -340,6 +393,25 @@ function bindSourceSwitcherEvents() {
             }
         });
     });
+
+    // 綁定合約選擇事件
+    const contractSelect = document.getElementById('contract-select');
+    const refreshBtn = document.getElementById('btn-refresh-chain');
+
+    if (contractSelect) {
+        contractSelect.addEventListener('change', async () => {
+            state.lastRenderedStrikeCenter = null;
+            await renderStrikePicker();
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            state.lastRenderedStrikeCenter = null;
+            await renderStrikePicker();
+            showToast('info', '報價更新中...');
+        });
+    }
 
     // 初始化時檢查可用來源
     initSourceAvailability();
@@ -681,7 +753,11 @@ function updateUI() {
     renderPositionsList('C');
     updatePremiumSummary('C');
     updatePnLTable();
-    updateSensitivityAnalysis(); // Added
+    updatePnLTable();
+    // updateSensitivityAnalysis(); // Removed
+    if (typeof updateRiskDashboard === 'function') {
+        updateRiskDashboard();
+    }
 
     // 更新履約價選擇器 (僅當中心點改變時才會重繪)
     renderStrikePicker();
@@ -738,6 +814,9 @@ function updateSidebarInputs() {
 /**
  * 更新建議避險口數
  */
+/**
+ * 更新建議避險口數
+ */
 function updateSuggestedHedge() {
     const suggested = state.etfLots * state.hedgeRatio;
     if (elements.suggestedLots) {
@@ -745,6 +824,223 @@ function updateSuggestedHedge() {
     }
     if (elements.suggestedCalc) {
         elements.suggestedCalc.textContent = `(${state.etfLots.toFixed(2)} 張 × ${state.hedgeRatio.toFixed(2)})`;
+    }
+}
+
+// ======== Risk Dashboard Logic ========
+
+/**
+ * Calculate Total Portfolio PnL at specific index price
+ * (Used for Delta calculation and custom scenarios)
+ */
+function calcTotalPortfolioPnL(targetIndex) {
+    const strategy = state.strategies[state.currentStrategy];
+
+    // 1. ETF PnL
+    const etfPnL = Calculator.calcETFPnL(
+        targetIndex,
+        state.referenceIndex || state.tseIndex,
+        state.etfLots,
+        state.etfCost,
+        state.etfCurrentPrice
+    );
+
+    // 2. Options PnL
+    let optionsPnL = 0;
+    if (strategy) {
+        for (const pos of strategy) {
+            if (pos.isClosed && pos.closePrice !== undefined) {
+                optionsPnL += Calculator.calcRealizedPnL(pos, pos.closePrice);
+            } else {
+                optionsPnL += Calculator.calcPositionPnL(pos, targetIndex);
+            }
+        }
+    }
+
+    return etfPnL + optionsPnL;
+}
+
+/**
+ * Get Days to Expiry based on Contract Selection
+ */
+function getDaysToExpiry() {
+    const contractType = elements.contractSelect ? elements.contractSelect.value : 'current_month';
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-11
+
+    let targetDate = new Date();
+
+    // Check for Weekly (Wed) or Weekly (Fri)
+    if (contractType.includes('week') || contractType.includes('fri')) {
+        let targetDay = 3; // Default Wednesday
+        if (contractType.includes('fri')) {
+            targetDay = 4; // Friday
+        }
+
+        const day = today.getDay();
+        let daysUntil = (targetDay - day + 7) % 7;
+
+        if (contractType.includes('next')) {
+            daysUntil += 7;
+        }
+
+        targetDate.setDate(today.getDate() + daysUntil);
+
+    } else {
+        // Monthly Options: 3rd Wednesday
+        const get3rdWed = (year, month) => {
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysToFirstWed = (3 - firstDay + 7) % 7;
+            const firstWedDate = 1 + daysToFirstWed;
+            const thirdWedDate = firstWedDate + 14;
+            return new Date(year, month, thirdWedDate);
+        };
+
+        let targetWed = get3rdWed(currentYear, currentMonth);
+
+        // If Current Month Wed has passed, move to Next Month
+        if (today > targetWed && contractType === 'current_month') {
+            targetWed = get3rdWed(currentYear, currentMonth + 1);
+        } else if (contractType === 'next_month') {
+            if (today > targetWed) {
+                targetWed = get3rdWed(currentYear, currentMonth + 2);
+            } else {
+                targetWed = get3rdWed(currentYear, currentMonth + 1);
+            }
+        }
+
+        targetDate = targetWed;
+    }
+
+    // Calculate difference in days
+    const diffTime = targetDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return Math.max(0, diffDays);
+}
+
+
+/**
+ * Update Risk Dashboard & Greeks
+ */
+function updateRiskDashboard() {
+    if (!state.strategies[state.currentStrategy]) return;
+
+    const currentIndex = state.tseIndex;
+    if (!currentIndex || currentIndex <= 0) return;
+
+    // 1. Calculate PnL Curve for scanning
+    const range = 2000;
+    const step = 20;
+    const result = Calculator.calculatePnLCurve({
+        centerPrice: currentIndex,
+        referenceIndex: state.referenceIndex || currentIndex,
+        priceRange: range,
+        etfLots: state.etfLots,
+        etfCost: state.etfCost,
+        etfCurrent: state.etfCurrentPrice,
+        positions: state.strategies[state.currentStrategy]
+    });
+
+    // 2. Breakeven
+    const breakevenPoints = Calculator.findBreakeven(result.prices, result.combinedProfits);
+    if (elements.riskBreakeven) {
+        if (breakevenPoints.length > 0) {
+            elements.riskBreakeven.textContent = breakevenPoints.join(', ');
+        } else {
+            // Check if all positive or all negative
+            const allPositive = result.combinedProfits.every(p => p >= 0);
+            elements.riskBreakeven.textContent = allPositive ? '全區獲利' : '無 (全區虧損)';
+        }
+    }
+
+    // 3. Max Loss
+    let minPnL = Infinity;
+    let minPnLIndex = 0;
+
+    for (let i = 0; i < result.combinedProfits.length; i++) {
+        if (result.combinedProfits[i] < minPnL) {
+            minPnL = result.combinedProfits[i];
+            minPnLIndex = result.prices[i];
+        }
+    }
+
+    if (elements.riskMaxLoss) {
+        elements.riskMaxLoss.textContent = Math.round(minPnL).toLocaleString();
+        elements.riskMaxLoss.className = minPnL < 0 ? 'risk-value danger-text' : 'risk-value info-text';
+    }
+    if (elements.riskMaxLossAt) {
+        elements.riskMaxLossAt.textContent = `@ ${minPnLIndex}`;
+    }
+
+    // 4. Hedge Coverage Ratio
+    // Delta of Strategy / Delta of ETF
+    // Calculate Delta at current Index
+    const deltaStep = 1;
+    const pnlCurrent = calcTotalPortfolioPnL(currentIndex);
+    const pnlNext = calcTotalPortfolioPnL(currentIndex + deltaStep);
+    const totalDelta = (pnlNext - pnlCurrent) / deltaStep;
+
+    const etfPnlCurrent = Calculator.calcETFPnL(currentIndex, state.referenceIndex, state.etfLots, state.etfCost, state.etfCurrentPrice);
+    const etfPnlNext = Calculator.calcETFPnL(currentIndex + deltaStep, state.referenceIndex, state.etfLots, state.etfCost, state.etfCurrentPrice);
+    const etfDelta = (etfPnlNext - etfPnlCurrent) / deltaStep;
+
+    // Coverage = (Total Delta / ETF Delta)? No.
+    // Usually Coverage = |Strategy Delta| / |ETF Delta|?
+    // Or (ETF Delta + Option Delta) / ETF Delta?
+    // Let's use Net Delta % of ETF Delta.
+    // But UI says "Strategy Delta / ETF Delta".
+    // Strategy Delta = Total Delta - ETF Delta.
+    const strategyDelta = totalDelta - etfDelta;
+
+    if (elements.riskHedgeRatio && Math.abs(etfDelta) > 1) { // Avoid div by zero
+        const ratio = Math.abs(strategyDelta / etfDelta) * 100;
+        elements.riskHedgeRatio.textContent = ratio.toFixed(1) + '%';
+    } else if (elements.riskHedgeRatio) {
+        elements.riskHedgeRatio.textContent = '--%';
+    }
+
+    // 5. PnL at -500 / -1000
+    if (elements.riskPnl500Down) {
+        const pnlM500 = calcTotalPortfolioPnL(currentIndex - 500);
+        elements.riskPnl500Down.textContent = Math.round(pnlM500).toLocaleString();
+        elements.riskPnl500Down.style.color = pnlM500 >= 0 ? 'var(--profit-color)' : 'var(--loss-color)';
+    }
+    if (elements.riskPnl1000Down) {
+        const pnlM1000 = calcTotalPortfolioPnL(currentIndex - 1000);
+        elements.riskPnl1000Down.textContent = `-1000點: ${Math.round(pnlM1000).toLocaleString()}`;
+    }
+
+    // 6. Greeks
+    if (elements.greekDelta) {
+        elements.greekDelta.textContent = totalDelta.toFixed(2);
+        elements.greekDelta.className = totalDelta >= 0 ? 'greek-value delta-value' : 'greek-value delta-value negative';
+    }
+
+    if (elements.greekTheta) {
+        const days = getDaysToExpiry();
+        const theta = Calculator.calculatePortfolioTheta(
+            state.strategies[state.currentStrategy],
+            currentIndex,
+            days
+        );
+        elements.greekTheta.textContent = `${Math.round(theta).toLocaleString()} /日`;
+        elements.greekTheta.className = theta >= 0 ? 'greek-value theta-value' : 'greek-value theta-value negative';
+    }
+
+    if (elements.greekNetPremium) {
+        const summary = Calculator.calculatePremiumSummary(state.strategies[state.currentStrategy]);
+        const net = summary.netPremium;
+        elements.greekNetPremium.textContent = Math.round(net).toLocaleString();
+        elements.greekNetPremium.className = net >= 0 ? 'greek-value money-value' : 'greek-value money-value negative';
+    }
+
+    if (elements.greekTotalPnL) {
+        // Current PnL
+        const currentTotal = calcTotalPortfolioPnL(currentIndex);
+        elements.greekTotalPnL.textContent = Math.round(currentTotal).toLocaleString();
+        elements.greekTotalPnL.className = currentTotal >= 0 ? 'greek-value total-pnl-value' : 'greek-value total-pnl-value negative';
     }
 }
 
@@ -831,20 +1127,67 @@ async function renderStrikePicker() {
         renderOptionChainGrid(state.optionChainData);
         return;
     }
+    /**
+     * 取得指定履約價附近的選擇權報價 (API)
+     */
+    async function fetchOptionChain(centerStrike) {
+        if (!centerStrike) return null;
+
+        // Get Contract Selection
+        const contractSelect = document.getElementById('contract-select');
+        const contract = contractSelect ? contractSelect.value : 'current_month';
+
+        const range = 8; // 上下 8 檔
+        const step = 100; // 每 100 點一檔
+        const source = state.optionSource;
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/option-chain?center=${centerStrike}&range=${range}&step=${step}&source=${source}&contract=${contract}`);
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            const data = await response.json();
+            return data; // { center, range, step, chain: [...], source: '...' }
+        } catch (error) {
+            console.error("無法取得選擇權報價:", error);
+            showToast('error', '無法取得即時報價，請檢查後端連線');
+            return null;
+        }
+    }
     state.lastRenderedStrikeCenter = centerStrike;
 
     try {
         // 呼叫後端 API 取得報價鏈
         // 請求範圍：前後 10 檔 (依照使用者目前的視圖)
-        const range = 10;
-        const source = state.optionSource || 'taifex';
-        const apiUrl = `http://localhost:5000/api/option-chain?center=${centerStrike}&range=${range}&source=${source}`;
-
-        const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error('API Error');
-
-        const data = await response.json();
+        const data = await fetchOptionChain(centerStrike);
+        if (!data) {
+            throw new Error('Failed to fetch option chain data.');
+        }
         state.optionChainData = data; // 快取資料
+
+        // Update Source Status Indicator
+        const sourceStatus = document.getElementById('source-status');
+        if (sourceStatus) {
+            const sourceLabel = {
+                'taifex': '期交所 API',
+                'fubon': '富邦 API',
+                'yahoo': 'Yahoo 股市',
+                'mock': '模擬資料 (Mock)'
+            };
+            sourceStatus.textContent = sourceLabel[data.source] || data.source;
+            if (data.source === 'mock') {
+                sourceStatus.className = 'source-status warning';
+                // If user selected Fubon/Taifex but got Mock, warn them
+                if (state.optionSource !== 'mock') {
+                    // Debounce toast or only show if not already showing? 
+                    // Just show warning once per fetch if mismatched
+                    showToast('warning', '無法取得即時報價 (可能休市或連線失敗)，目前顯示模擬資料。');
+                }
+            } else {
+                sourceStatus.className = 'source-status success';
+                showToast('success', `報價來源: ${sourceLabel[data.source] || data.source}`);
+            }
+        }
 
         // FIX: 如果 API 回傳了有效且新的中心價格 (例如來自 Yahoo 期貨的夜盤價格)，更新全域指數狀態
         if (data.center_price && data.center_price > 0 && data.source !== 'mock') {
@@ -2016,6 +2359,92 @@ async function handleClear() {
     showToast('success', '已清空所有資料');
 }
 
+/**
+ * 處理資料匯出
+ */
+function handleExportData() {
+    const dataToExport = {
+        etfLots: state.etfLots,
+        etfCost: state.etfCost,
+        etfCurrentPrice: state.etfCurrentPrice,
+        hedgeRatio: state.hedgeRatio,
+        accountCost: state.accountCost,
+        accountBalance: state.accountBalance,
+        currentStrategy: state.currentStrategy,
+        optionPositions: state.strategies.A,
+        strategyB: { positions: state.strategies.B },
+        strategyC: { positions: state.strategies.C },
+        realizedPnL: state.realizedPnL,
+        referenceIndex: state.referenceIndex,
+        tseIndex: state.tseIndex,
+        priceRange: state.priceRange
+    };
+
+    FirebaseModule.exportDataAsJSON(dataToExport);
+    showToast('success', '資料匯出檔案已下載');
+}
+
+/**
+ * 處理資料匯入
+ */
+async function handleImportData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const importedData = await FirebaseModule.importDataFromJSON(file);
+
+        if (importedData) {
+            // 清理並還原檔案輸入框以便重複使用
+            event.target.value = '';
+
+            // 確認對話框
+            if (!confirm(`確定要匯入資料嗎？\n這將覆蓋現有設定與倉位。\n檔案日期: ${importedData.lastUpdated || '未知'}`)) {
+                return;
+            }
+
+            // 更新 State
+            // 使用相同邏輯如 initApp 的載入邏輯
+            const ensureArray = (data) => {
+                if (!data) return [];
+                if (Array.isArray(data)) return data;
+                return Object.values(data);
+            };
+
+            if (importedData.optionPositions) {
+                state.strategies.A = ensureArray(importedData.optionPositions);
+            }
+            if (importedData.strategyB && importedData.strategyB.positions) {
+                state.strategies.B = ensureArray(importedData.strategyB.positions);
+            }
+            if (importedData.strategyC && importedData.strategyC.positions) {
+                state.strategies.C = ensureArray(importedData.strategyC.positions);
+            }
+
+            if (importedData.etfLots !== undefined) state.etfLots = importedData.etfLots;
+            if (importedData.etfCost !== undefined) state.etfCost = importedData.etfCost;
+            if (importedData.etfCurrentPrice !== undefined) state.etfCurrentPrice = importedData.etfCurrentPrice;
+            if (importedData.hedgeRatio !== undefined) state.hedgeRatio = importedData.hedgeRatio;
+            if (importedData.accountCost !== undefined) state.accountCost = importedData.accountCost;
+            if (importedData.accountBalance !== undefined) state.accountBalance = importedData.accountBalance;
+            if (importedData.realizedPnL) state.realizedPnL = importedData.realizedPnL;
+            if (importedData.referenceIndex) state.referenceIndex = importedData.referenceIndex;
+            if (importedData.priceRange) state.priceRange = importedData.priceRange;
+            if (importedData.tseIndex) state.tseIndex = importedData.tseIndex;
+
+            // 存檔並更新 UI
+            updateUI();
+            updateChart();
+            autoSave();
+            showToast('success', '資料匯入成功');
+        }
+    } catch (error) {
+        console.error('匯入失敗:', error);
+        showToast('error', '匯入失敗: ' + error.message);
+    }
+}
+
+
 // handleComparisonTabClick 已移除（舊版獨立比較區塊，改用 handleStrategySwitch）
 
 // ======== 策略控制函數 ========
@@ -2268,11 +2697,6 @@ let parsedInventory = {
  * 綁定 AI 相關事件
  */
 function bindAIEvents() {
-    elements.btnAIAnalysis = document.getElementById('btn-ai-analysis');
-    elements.aiResultCard = document.getElementById('ai-result-card');
-    elements.aiResultContent = document.getElementById('ai-result-content');
-    elements.aiLoading = document.getElementById('ai-loading');
-    elements.btnCloseAI = document.getElementById('btn-close-ai');
     elements.aiApiKeyInput = document.getElementById('ai-api-key');
 
     // 載入儲存的 API Key
@@ -2316,16 +2740,49 @@ function bindAIEvents() {
         }
     });
 
-    elements.btnAIAnalysis?.addEventListener('click', handleAIAnalysis);
-    elements.btnCloseAI?.addEventListener('click', () => {
+    // Chat Input
+    if (elements.btnSendAi && elements.aiInput) {
+        elements.btnSendAi.addEventListener('click', () => handleAIChat(elements.aiInput.value));
+        elements.aiInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAIChat(elements.aiInput.value);
+        });
+    }
+
+    // Feature Buttons
+    document.querySelectorAll('.btn-ai-feature').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            handleAIFeature(action);
+        });
+    });
+
+    elements.btnCloseAi?.addEventListener('click', () => {
         elements.aiResultCard.style.display = 'none';
+        // Clear content when closed? Optional.
     });
 
     // ===== AI 助手區塊事件綁定 =====
     bindAIAssistantEvents();
 }
 
+function handleAIChat(query) {
+    if (!query) return;
+    performAIAnalysis(`使用者提問: ${query}`);
+}
+
+function handleAIFeature(action) {
+    const prompts = {
+        'risk_alert': '請分析目前投資組合的潛在風險，特別針對極端行情和 Greeks 曝險提出預警。',
+        'strategy_recommend': '根據目前的持倉狀態，請推薦改善損益曲線或降低風險的調整策略。',
+        'position_analysis': '請詳細分析目前的倉位結構，包含主力策略和避險部位的配合情況。',
+        'scenario_analysis': '請模擬股市大跌 10% 或大漲 10% 的情境下，此投資組合的表現與應對建議。'
+    };
+    const prompt = prompts[action] || '請分析目前投資組合。';
+    performAIAnalysis(prompt);
+}
+
 /**
+<<<<<<< HEAD
  * 綁定 AI 助手區塊事件
  */
 function bindAIAssistantEvents() {
@@ -2476,38 +2933,181 @@ ${customQuestion}
 
 /**
  * 處理 AI 分析請求 (原有的分析按鈕)
+=======
+ * 執行 AI 分析
+>>>>>>> fae9ee7 (feat: Implement Risk Dashboard, Theta Calc, and Weekly/Friday Options support)
  */
-async function handleAIAnalysis() {
+async function performAIAnalysis(instruction) {
     if (!state.apiKey) {
         showToast('error', '請先在側邊欄設定 Google Gemini API Key');
-        // 自動打開側邊欄並聚焦
         if (window.innerWidth <= 768) elements.sidebar.classList.add('active');
         elements.aiApiKeyInput?.focus();
         return;
     }
 
-    // 顯示載入動畫
     elements.aiLoading.style.display = 'block';
-    elements.btnAIAnalysis.disabled = true;
     elements.aiResultCard.style.display = 'none';
 
     try {
-        const prompt = generateAnalysisPrompt();
-        const response = await callGeminiAPI(prompt, state.apiKey);
+        const baseContext = generateAnalysisPrompt();
+        const finalPrompt = `${baseContext}\n\nUSER REQUEST: ${instruction}`;
+        const response = await callGeminiAPI(finalPrompt, state.apiKey);
 
-        // 渲染結果
         elements.aiResultContent.innerHTML = renderMarkdown(response);
         elements.aiResultCard.style.display = 'block';
-
-        // 捲動到結果
         elements.aiResultCard.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('AI Analysis Error:', error);
         showToast('error', 'AI 分析失敗: ' + error.message);
     } finally {
         elements.aiLoading.style.display = 'none';
-        elements.btnAIAnalysis.disabled = false;
     }
+}
+
+// Keep handleAIAnalysis for backward compatibility if needed, or remove.
+// Renaming existing handleAIAnalysis to avoid conflict/duplication if I replaced it.
+// The replace block covers handleAIAnalysis definition too.
+
+
+/**
+ * 計算總投資組合損益 (用於 Risk Dashboard)
+ */
+function calcTotalPortfolioPnL(indexPrice) {
+    // 1. ETF PnL
+    const etfPnL = Calculator.calcETFPnL(
+        indexPrice,
+        state.referenceIndex,
+        state.etfLots,
+        state.etfCost,
+        state.etfCurrentPrice
+    );
+
+    // 2. Options PnL (Open Positions only essentially for curve)
+    let optionsPnL = 0;
+    ['A', 'B', 'C'].forEach(strategy => {
+        const positions = state.strategies[strategy];
+        if (positions) {
+            positions.forEach(pos => {
+                if (!pos.isClosed) {
+                    optionsPnL += Calculator.calcPositionPnL(pos, indexPrice);
+                }
+            });
+        }
+    });
+
+    // 3. Include Realized? The chart usually shows *Floating* + *Realized*.
+    const totalRealized = (state.realizedPnL.A || 0) + (state.realizedPnL.B || 0) + (state.realizedPnL.C || 0);
+    const accountPnL = state.accountBalance - state.accountCost; // This is Account Equity PnL (already includes realized)
+    // Wait, accountBalance decreases when we pay premium, increases when we receive.
+    // So (Balance - Cost) IS the Realized + Floating(if marked to market)? 
+    // No, Balance only changes on Close or Open(Premium).
+    // Let's rely on standard formula: ETF Floating + Option Floating + Total Realized PnL (from closed).
+    // But `state.realizedPnL` tracks closed positions.
+    // `optionPnL` above calculates floating PnL of OPEN positions at `indexPrice`.
+
+    return etfPnL + optionsPnL + totalRealized;
+}
+
+/**
+ * 更新風險儀表板
+ */
+function updateRiskDashboard() {
+    if (!elements.riskBreakeven) return;
+
+    const currentIdx = state.tseIndex;
+    const currentPnL = calcTotalPortfolioPnL(currentIdx);
+
+    // 1. Greeks (Finite Difference)
+    const deltaStep = 5; // Small step
+    const pnlUp = calcTotalPortfolioPnL(currentIdx + deltaStep);
+    const pnlDown = calcTotalPortfolioPnL(currentIdx - deltaStep);
+    const deltaTotal = (pnlUp - pnlDown) / (2 * deltaStep) * 100; // $/100 points
+
+    // ETF Delta (Approx)
+    // ETF PnL is linear. 
+    const etfDelta = (Calculator.calcETFPnL(currentIdx + deltaStep, state.referenceIndex, state.etfLots, state.etfCost, state.etfCurrentPrice) -
+        Calculator.calcETFPnL(currentIdx - deltaStep, state.referenceIndex, state.etfLots, state.etfCost, state.etfCurrentPrice)) / (2 * deltaStep) * 100;
+
+    // Strategy Delta
+    const strategyDelta = deltaTotal - etfDelta;
+
+    // Hedge Ratio
+    let hedgeRatio = 0;
+    if (Math.abs(etfDelta) > 1) {
+        hedgeRatio = Math.abs(strategyDelta / etfDelta) * 100;
+    }
+
+    // Theta (Approx using time decay - requires simDays support in calcPositionPnL? 
+    // Calculator.calcPositionPnL doesn't seem to take days... defaulting to Intrinsic + TimeValue(now).
+    // If we can't calc Theta easily without modifying Calculator, we show '--'.
+    // Or we use a naive theta: 0? 
+    // Let's leave Theta as '--' or basic estimation if possible.
+
+    // Net Premium
+    const sumA = Calculator.calculatePremiumSummary(state.strategies.A);
+    const sumB = Calculator.calculatePremiumSummary(state.strategies.B);
+    const sumC = Calculator.calculatePremiumSummary(state.strategies.C);
+    const netPremium = sumA.netPremium + sumB.netPremium + sumC.netPremium;
+
+    // 2. Scan for Breakeven and Max Loss
+    let minPnL = currentPnL;
+    let minPnLAt = currentIdx;
+    let breakevenPoints = [];
+
+    const range = 2000;
+    const step = 20;
+
+    for (let i = currentIdx - range; i <= currentIdx + range; i += step) {
+        const val = calcTotalPortfolioPnL(i);
+
+        // Min Loss
+        if (val < minPnL) {
+            minPnL = val;
+            minPnLAt = i;
+        }
+
+        // Breakeven crossing
+        if (i > currentIdx - range) {
+            const prevVal = calcTotalPortfolioPnL(i - step);
+            if ((prevVal < 0 && val >= 0) || (prevVal >= 0 && val < 0)) {
+                breakevenPoints.push(i);
+            }
+        }
+    }
+
+    const pnlDrug500 = calcTotalPortfolioPnL(currentIdx - 500);
+    const pnlDrop1000 = calcTotalPortfolioPnL(currentIdx - 1000);
+
+    // Render Risk Keys
+    // Breakeven
+    if (breakevenPoints.length === 0) {
+        elements.riskBreakeven.textContent = currentPnL >= 0 ? "全區獲利" : "全區虧損";
+    } else {
+        elements.riskBreakeven.textContent = breakevenPoints.map(p => p.toLocaleString()).join(', ');
+    }
+
+    // Max Loss
+    elements.riskMaxLoss.textContent = minPnL.toLocaleString();
+    elements.riskMaxLoss.className = `risk-value ${minPnL >= 0 ? 'profit' : 'danger-text'}`;
+    elements.riskMaxLossAt.textContent = `@ ${minPnLAt}`;
+
+    // Hedge Ratio
+    elements.riskHedgeRatio.textContent = `${hedgeRatio.toFixed(1)}%`;
+
+    // PnL Drop
+    elements.riskPnlDrop500.textContent = pnlDrug500.toLocaleString();
+    elements.riskPnlDrop500.className = `risk-value ${pnlDrug500 >= 0 ? 'profit' : 'loss'}`;
+    elements.riskPnlDrop1000.textContent = `-1000點: ${pnlDrop1000.toLocaleString()}`;
+
+    // Render Greeks
+    elements.greekDelta.textContent = Math.round(deltaTotal).toLocaleString();
+    elements.greekDelta.className = `greek-value ${deltaTotal >= 0 ? 'profit' : 'loss'}`; // Blue/Red distinction
+
+    elements.greekNetPremium.textContent = netPremium.toLocaleString();
+    elements.greekNetPremium.className = `greek-value ${netPremium >= 0 ? 'profit' : 'loss'}`;
+
+    elements.greekTotalPnL.textContent = Math.round(currentPnL).toLocaleString();
+    elements.greekTotalPnL.className = `greek-value ${currentPnL >= 0 ? 'profit' : 'loss'}`;
 }
 
 /**

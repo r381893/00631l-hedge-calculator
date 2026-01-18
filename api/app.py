@@ -21,7 +21,7 @@ import random
 import time
 import requests
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import logging
 import yahoo_scraper  # Import the new scraper logic
@@ -46,7 +46,7 @@ class DataProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_option_price(self, strike: int, option_type: str) -> dict:
+    def get_option_price(self, strike: int, option_type: str, contract: str = None) -> dict:
         """取得選擇權價格"""
         pass
 
@@ -75,14 +75,23 @@ class DataProvider(abc.ABC):
                 
         return month, year
 
-    def get_option_symbol(self, strike: int, option_type: str) -> str:
+    def get_option_symbol(self, strike: int, option_type: str, target_month: int = None, target_year: int = None, root: str = "TXO") -> str:
         """產生選擇權代號"""
-        month, year = self.get_contract_month_year()
+        if target_month and target_year:
+            month, year = target_month, target_year
+        else:
+            month, year = self.get_contract_month_year()
+            
         year_digit = str(year)[-1]
-        # 使用單一月份代碼（交易所月代碼通常與買/賣權無關）
-        month_codes = "ABCDEFGHIJKL"
-        month_code = month_codes[month - 1]
-        return f"TXO{strike}{month_code}{year_digit}"
+        
+        # 買權 Call (A-L), 賣權 Put (M-X)
+        if option_type.lower() in ['call', 'c', 'buy']:
+            codes = "ABCDEFGHIJKL"
+        else:
+            codes = "MNOPQRSTUVWX"
+            
+        month_code = codes[month - 1]
+        return f"{root}{strike}{month_code}{year_digit}"
 
 
 # ============ Mock 資料提供者 ============
@@ -105,7 +114,7 @@ class MockDataProvider(DataProvider):
             "change_percent": 0
         }
     
-    def get_option_price(self, strike: int, option_type: str) -> dict:
+    def get_option_price(self, strike: int, option_type: str, contract: str = None) -> dict:
         """
         模擬選擇權價格（基於 Time Value 的邏輯）
         
@@ -343,8 +352,10 @@ class TaifexDataProvider(DataProvider):
 
         for item in txo_data:
             contract_month = get_field(item, ['ContractMonth(Week)', 'ContractMonth', 'ContractMonthWeek', 'Contract Month']) or ''
-            # 只取當月合約（比對前 6 碼 YYYYMM）
-            if not str(contract_month).startswith(str(target_month)[:6]):
+            # 只取當月合約（比對前 6 碼 YYYYMM，且排除週選 'W'）
+            # 修正：避免週選與月選 Strike Key 衝突
+            s_month = str(contract_month).strip()
+            if not s_month.startswith(str(target_month)[:6]) or 'W' in s_month:
                 continue
 
             strike_val = get_field(item, ['StrikePrice', 'Strike', 'StrikePrice '])
@@ -373,17 +384,24 @@ class TaifexDataProvider(DataProvider):
             best_ask = get_field(item, ['BestAsk', 'Ask']) or '0'
 
             try:
-                price = float(close) if close and close != '-' else float(settlement) if settlement and settlement != '-' else 0
+                bid = float(best_bid) if best_bid and best_bid != '-' else 0
+                ask = float(best_ask) if best_ask and best_ask != '-' else 0
+                close_p = float(close) if close and close != '-' else 0
+                settle_p = float(settlement) if settlement and settlement != '-' else 0
+                
+                # 價格優先順序: 最新成交 > (買+賣)/2 > 買價 > 賣價 > 結算價
+                if close_p > 0:
+                    price = close_p
+                elif bid > 0 and ask > 0:
+                    price = (bid + ask) / 2
+                elif bid > 0:
+                    price = bid
+                elif ask > 0:
+                    price = ask
+                else:
+                    price = settle_p
             except Exception:
                 price = 0
-            try:
-                bid = float(best_bid) if best_bid and best_bid != '-' else 0
-            except Exception:
-                bid = 0
-            try:
-                ask = float(best_ask) if best_ask and best_ask != '-' else 0
-            except Exception:
-                ask = 0
 
             result[key] = {
                 'strike': strike_int,
@@ -469,7 +487,7 @@ class TaifexDataProvider(DataProvider):
         """期交所無提供即時價格，回傳空值"""
         return {"price": 0, "change": 0, "change_percent": 0}
     
-    def get_option_price(self, strike: int, option_type: str) -> dict:
+    def get_option_price(self, strike: int, option_type: str, contract: str = None) -> dict:
         data = self._fetch_data()
         
         call_put = 'C' if option_type.lower() == 'call' else 'P'
@@ -624,12 +642,87 @@ class FubonDataProvider(DataProvider):
             logger.error(f"❌ 取得期貨價格失敗: {e}")
             return {"price": 0, "change": 0, "change_percent": 0}
     
-    def get_option_price(self, strike: int, option_type: str) -> dict:
+    def get_option_price(self, strike: int, option_type: str, contract: str = None) -> dict:
         if not self.is_logged_in:
             return None
         
         try:
-            symbol = self.get_option_symbol(strike, option_type)
+            # Default values
+            root = "TXO"
+            month, year = self.get_contract_month_year()
+
+            # Handle Contract Selection
+            if contract:
+                now = datetime.now()
+                target_date = None
+
+                if contract == "current_week" or contract == "next_week":
+                    # Calc Target Wednesday
+                    # 0=Mon, 2=Wed
+                    days_to_wed = (2 - now.weekday() + 7) % 7
+                    target_date = now + timedelta(days=days_to_wed)
+                    
+                    if contract == "next_week":
+                        target_date += timedelta(days=7)
+                    
+                    # Determine Month/Year based on Target Date
+                    year = target_date.year
+                    month = target_date.month
+                    
+                    # Determine Root (TX1, TX2, TXO, TX4, TX5)
+                    first_day = target_date.replace(day=1)
+                    days_to_first_wed = (2 - first_day.weekday() + 7) % 7
+                    first_wed = first_day + timedelta(days=days_to_first_wed)
+                    
+                    day_diff = (target_date - first_wed).days
+                    week_num = (day_diff // 7) + 1
+                    
+                    if week_num == 3:
+                        root = "TXO" # Monthly contract
+                    else:
+                        root = f"TX{week_num}" # TX1, TX2, TX4, TX5
+                
+                elif contract == "current_fri" or contract == "next_fri":
+                    # Calc Target Friday
+                    # 4=Fri
+                    days_to_fri = (4 - now.weekday() + 7) % 7
+                    target_date = now + timedelta(days=days_to_fri)
+                    
+                    if contract == "next_fri":
+                        target_date += timedelta(days=7)
+                        
+                    year = target_date.year
+                    month = target_date.month
+                    
+                    # Determine Root (TXU, TXV, TXX, TXY, TXZ)
+                    first_day = target_date.replace(day=1)
+                    days_to_first_fri = (4 - first_day.weekday() + 7) % 7
+                    first_fri = first_day + timedelta(days=days_to_first_fri)
+                    
+                    day_diff = (target_date - first_fri).days
+                    week_num = (day_diff // 7) + 1
+                    
+                    roots = ['TXU', 'TXV', 'TXX', 'TXY', 'TXZ']
+                    if 1 <= week_num <= 5:
+                        root = roots[week_num - 1]
+                    else:
+                        root = "TXU" # Fallback
+
+                elif contract == "next_month":
+                    # Monthly logic override
+                    month += 1
+                    if month > 12:
+                         month = 1
+                         year += 1
+                    root = "TXO"
+                else: 
+                     # current_month (default)
+                     # Already set by get_contract_month_year()
+                     root = "TXO"
+
+            # Generate Symbol
+            symbol = self.get_option_symbol(strike, option_type, target_month=month, target_year=year, root=root)
+            
             quote = self._get_quote_safe(symbol)
             
             if quote and 'lastPrice' in quote and quote['lastPrice'] > 0:
@@ -654,7 +747,7 @@ class FubonDataProvider(DataProvider):
                 }
             return None
         except Exception as e:
-            logger.error(f"❌ 取得選擇權價格失敗 ({strike} {option_type}): {e}")
+            logger.error(f"❌ 取得選擇權價格失敗 ({strike} {option_type} {contract}): {e}")
             return None
 
 
@@ -857,6 +950,7 @@ def get_option_chain():
     price_range = request.args.get('range', default=10, type=int)
     step = request.args.get('step', default=100, type=int)
     source = request.args.get('source', default='taifex', type=str)
+    contract_code = request.args.get('contract', default=None, type=str) # e.g. "202401" or "202401W1"
     
     # 計算履約價列表
     strikes = [center + (i * step) for i in range(-price_range, price_range + 1)]
@@ -867,8 +961,9 @@ def get_option_chain():
     
     chain = []
     for strike in strikes:
-        call_data = provider.get_option_price(strike, 'call')
-        put_data = provider.get_option_price(strike, 'put')
+        # Pass contract_code to get_option_price
+        call_data = provider.get_option_price(strike, 'call', contract_code)
+        put_data = provider.get_option_price(strike, 'put', contract_code)
         
         # 如果主要來源無資料，降級到 mock
         if call_data is None:
