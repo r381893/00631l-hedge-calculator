@@ -186,23 +186,7 @@ function cacheElements() {
     elements.inventoryText = document.getElementById('inventory-text');
 
     // Risk Dashboard Elements
-<<<<<<< HEAD
-    state.riskElements = {
-        // Key Risk Metrics
-        breakeven: document.getElementById('risk-breakeven'),
-        maxLoss: document.getElementById('risk-max-loss'),
-        maxLossIndex: document.getElementById('risk-max-loss-index'),
-        hedgeCoverage: document.getElementById('risk-hedge-coverage'),
-        hedgeDesc: document.getElementById('risk-hedge-desc'),
-        downside500: document.getElementById('risk-downside-500'),
-        downside1000: document.getElementById('risk-downside-1000'),
-        // Greeks
-        delta: document.getElementById('greek-delta'),
-        theta: document.getElementById('greek-theta'),
-        netPremium: document.getElementById('greek-net-premium'),
-        currentPnl: document.getElementById('greek-current-pnl')
-    };
-=======
+
     elements.riskBreakeven = document.getElementById('risk-breakeven');
     elements.riskMaxLoss = document.getElementById('risk-max-loss');
     elements.riskMaxLossAt = document.getElementById('risk-max-loss-at');
@@ -221,7 +205,7 @@ function cacheElements() {
 
 
 
->>>>>>> fae9ee7 (feat: Implement Risk Dashboard, Theta Calc, and Weekly/Friday Options support)
+
     elements.btnParseInventory = document.getElementById('btn-parse-inventory');
     elements.btnClearInventory = document.getElementById('btn-clear-inventory');
     elements.parseResults = document.getElementById('parse-results');
@@ -3117,7 +3101,7 @@ async function callGeminiAPI(prompt, apiKey) {
     // 自動降級機制：嘗試多種模型直到成功
     const models = [
         'gemini-1.5-flash',
-        'gemini-2.0-flash-lite-preview-02-05', 
+        'gemini-2.0-flash-lite-preview-02-05',
         'gemini-flash-latest',
         'gemini-pro'
     ];
@@ -3126,7 +3110,7 @@ async function callGeminiAPI(prompt, apiKey) {
 
     for (const model of models) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        
+
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -4155,4 +4139,76 @@ ${strategyData.positions.map(p => `- ${p.direction} ${p.type} ${p.strike} @ ${p.
         elements.btnAiAnalysis.disabled = false;
         if (elements.aiLoading) elements.aiLoading.style.display = 'none';
     }
+}
+
+/**
+ * 應用程式初始化
+ */
+async function initApp() {
+    console.log('🚀 初始化應用程式...');
+    state.isLoading = true;
+
+    // 1. 初始化 Firebase
+    // 嘗試從 localStorage 讀取設定
+    const savedConfig = localStorage.getItem('firebaseConfig');
+    let firebaseConfig = null;
+    if (savedConfig) {
+        try {
+            firebaseConfig = JSON.parse(savedConfig);
+            if (elements.firebaseConfigInput) {
+                elements.firebaseConfigInput.value = JSON.stringify(firebaseConfig, null, 2);
+            }
+        } catch (e) {
+            console.error('Firebase Config Parse Error', e);
+        }
+    }
+    FirebaseModule.initFirebase(firebaseConfig);
+
+    // 2. 載入使用者資料
+    try {
+        const savedData = await FirebaseModule.loadData();
+        if (savedData) {
+            // 合併資料到 state
+            if (savedData.etfLots !== undefined) state.etfLots = Number(savedData.etfLots);
+            if (savedData.etfCost !== undefined) state.etfCost = Number(savedData.etfCost);
+            if (savedData.etfCurrentPrice !== undefined) state.etfCurrentPrice = Number(savedData.etfCurrentPrice);
+            if (savedData.tseIndex !== undefined) state.tseIndex = Number(savedData.tseIndex);
+
+            if (savedData.strategies) {
+                state.strategies = savedData.strategies; // 重要：還原策略
+            }
+            if (savedData.currentStrategy) state.currentStrategy = savedData.currentStrategy;
+
+            // 確保 optionPositions 指向正確
+            state.optionPositions = state.strategies[state.currentStrategy] || [];
+
+            console.log('✅ 資料載入成功:', state);
+            showToast('success', '資料載入完成');
+        } else {
+            console.log('ℹ️ 無儲存資料，使用預設值');
+        }
+    } catch (e) {
+        console.error('Data Load Error:', e);
+        showToast('error', '讀取資料失敗');
+    }
+
+    state.isLoading = false;
+
+    // 3. 初始渲染
+    updateUI();
+
+    // 4. 抓取行情 (非同步)
+    fetchMarketPrices().then(() => {
+        // 行情抓完後再次更新 PnL
+        updateUI();
+    });
+
+    // 5. 初始化報價來源
+    // await initSourceAvailability(); // Already called in bindSourceSwitcherEvents? No, let's call it.
+    // Actually initSourceAvailability is called in bindSourceSwitcherEvents line 417.
+    // So we don't need to call it again, but renderStrikePicker is needed.
+    renderStrikePicker();
+
+    // 6. 啟動自動更新 (每 60 秒)
+    setInterval(fetchMarketPrices, 60000);
 }
