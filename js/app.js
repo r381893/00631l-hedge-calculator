@@ -737,7 +737,6 @@ function updateUI() {
     renderPositionsList('C');
     updatePremiumSummary('C');
     updatePnLTable();
-    updatePnLTable();
     // updateSensitivityAnalysis(); // Removed
     if (typeof updateRiskDashboard === 'function') {
         updateRiskDashboard();
@@ -1101,9 +1100,6 @@ function getAccountPnL() {
 async function renderStrikePicker() {
     if (!elements.strikePickerGrid) return;
 
-    // 顯示載入中
-    elements.strikePickerGrid.innerHTML = '<div style="text-align: center; padding: 20px;"><span class="loading-spinner"></span> 正在載入即時報價...</div>';
-
     const centerStrike = Math.round(state.tseIndex / 100) * 100;
 
     // 避免重複渲染相同的中心點 (但在切換時仍需重新抓取)
@@ -1111,6 +1107,10 @@ async function renderStrikePicker() {
         renderOptionChainGrid(state.optionChainData);
         return;
     }
+
+    // 顯示載入中
+    elements.strikePickerGrid.innerHTML = '<div style="text-align: center; padding: 20px;"><span class="loading-spinner"></span> 正在載入即時報價...</div>';
+
     /**
      * 取得指定履約價附近的選擇權報價 (API)
      */
@@ -1330,15 +1330,18 @@ function renderPositionsList(strategy) {
 
     if (!listElement || !countElement) return;
 
-    // 清空列表
-    listElement.innerHTML = '';
-
     // 渲染倉位
     const positions = state.strategies[strategy] || [];
+    const fragment = document.createDocumentFragment();
+
     positions.forEach((pos, index) => {
         const item = createPositionItem(pos, index, strategy);
-        listElement.appendChild(item);
+        fragment.appendChild(item);
     });
+
+    // 清空並一次性添加 (減少重繪)
+    listElement.innerHTML = '';
+    listElement.appendChild(fragment);
 
     // 更新計數
     countElement.textContent = `${positions.length} 筆`;
@@ -1695,6 +1698,8 @@ function updatePnLTable() {
         state.etfCurrentPrice
     );
 
+    const fragment = document.createDocumentFragment();
+
     for (let i = 0; i < prices.length; i++) {
         const row = document.createElement('tr');
 
@@ -1749,8 +1754,9 @@ function updatePnLTable() {
             <td class="col-total-c"><strong>${formatPnL(totalPnLC)}</strong></td>
         `;
 
-        elements.pnlTableBody.appendChild(row);
+        fragment.appendChild(row);
     }
+    elements.pnlTableBody.appendChild(fragment);
 }
 
 /**
@@ -2109,6 +2115,8 @@ function toggleSidebar() {
     }
 }
 
+let settingsChangeDebounceTimer = null;
+
 function handleSettingsChange() {
     state.etfLots = parseFloat(elements.etfLotsInput.value) || 0;
     state.etfCost = parseFloat(elements.etfCostInput.value) || 0;
@@ -2123,24 +2131,35 @@ function handleSettingsChange() {
         state.referenceIndex = Number.isNaN(refVal) ? state.tseIndex : refVal;
     }
 
-    // 更新帳戶損益顯示
-    updateAccountPnLDisplay();
+    // Debounce heavy UI updates & Save
+    if (settingsChangeDebounceTimer) clearTimeout(settingsChangeDebounceTimer);
 
-    updateUI();
-    updateChart();
-    autoSave();
+    settingsChangeDebounceTimer = setTimeout(() => {
+        // 更新帳戶損益顯示
+        updateAccountPnLDisplay();
+
+        updateUI();
+        updateChart();
+        autoSave();
+    }, 200);
 }
 
 /**
  * 處理已實現損益輸入變更
  */
+let pnlChangeDebounceTimer = null;
+
 function handleRealizedPnLChange() {
     state.realizedPnL.A = parseFloat(elements.realizedPnLA?.value) || 0;
     state.realizedPnL.B = parseFloat(elements.realizedPnLB?.value) || 0;
     state.realizedPnL.C = parseFloat(elements.realizedPnLC?.value) || 0;
 
-    updateChart(); // 重新計算並更新表格
-    autoSave();
+    if (pnlChangeDebounceTimer) clearTimeout(pnlChangeDebounceTimer);
+    pnlChangeDebounceTimer = setTimeout(() => {
+        updatePnLTable(); // Update table
+        updateChart();    // Update chart
+        autoSave();
+    }, 200);
 }
 
 function handleProductTabClick(e) {
